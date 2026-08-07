@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="page">#DEDEDE</color>
+    <color name="card">#FFFFFF</color>
+    <color name="tile">#D6D6D6</color>
+    <color name="tile_line">#9A9391</color>
+    <color name="ink">#463F3D</color>
+    <color name="ink_soft">#5A5250</color>
+    <color name="ink_faint">#B9B4B2</color>
+    <color name="accent">#F9541A</color>
+    <color name="accent_text">#3B1507</color>
+    <color name="accent_pale">#EE9877</color>
+    <color name="digit">#BB5026</color>
+    <color name="digit_idle">#A9A5A3</color>
+    <color name="pill">#544C4A</color>
+    <color name="on_pill">#FFFFFF</color>
+    <color name="nav">#EFEFEF</color>
+</resources>
