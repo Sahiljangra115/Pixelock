@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/page"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        style="@style/Text.Value"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/crash_title"
+        android:textSize="22sp" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginVertical="12dp"
+        android:layout_weight="1">
+
+        <TextView
+            android:id="@+id/log"
+            style="@style/Text.Label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textIsSelectable="true" />
+    </ScrollView>
+
+    <TextView android:id="@+id/share" style="@style/Tile" android:layout_width="match_parent" android:layout_height="56dp" android:text="@string/crash_share" android:textColor="@color/tile_text" />
+    <TextView android:id="@+id/close" style="@style/Tile" android:layout_width="match_parent" android:layout_height="56dp" android:layout_marginTop="8dp" android:text="@string/crash_close" android:textColor="@color/tile_text" />
+</LinearLayout>
