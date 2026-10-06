@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/page"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:paddingHorizontal="16dp">
+
+    <dev.pixelock.app.ui.views.PixelLogoView
+        android:layout_width="150dp"
+        android:layout_height="26dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="28dp" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:background="@drawable/bg_card">
+
+        <dev.pixelock.app.ui.views.PixelClockView
+            android:id="@+id/clock"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="28dp" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/title"
+        style="@style/Text.Value"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:gravity="center"
+        android:textSize="22sp" />
+
+    <TextView
+        android:id="@+id/reason"
+        style="@style/Text.Label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:textSize="15sp" />
+
+    <TextView
+        android:id="@+id/leave"
+        style="@style/Tile"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:layout_marginTop="32dp"
+        android:textColor="@color/tile_text"
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/pay"
+        style="@style/Tile"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:layout_marginTop="8dp"
+        android:textColor="@color/tile_text"
+        android:textSize="16sp"
+        android:visibility="gone" />
+</LinearLayout>
