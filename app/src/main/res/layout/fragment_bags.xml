@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingHorizontal="16dp">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="3"
+        android:background="@drawable/bg_card">
+
+        <dev.pixelock.app.ui.views.BagsArtView
+            android:id="@+id/art"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="28dp" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/bag_columns"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_group"
+        android:padding="12dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="12dp"
+        android:layout_weight="2.6"
+        android:background="@drawable/bg_group"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp">
+
+            <TextView android:id="@+id/mode_limit" style="@style/Slot" android:layout_width="0dp" android:layout_height="match_parent" android:layout_marginEnd="8dp" android:layout_weight="1" android:text="@string/bag_limit" android:textColor="@color/tile_text" />
+            <TextView android:id="@+id/mode_window" style="@style/Slot" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:text="@string/bag_window" android:textColor="@color/tile_text" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/value_label"
+            style="@style/Text.Label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="8dp"
+            android:layout_weight="1">
+
+            <dev.pixelock.app.ui.views.RulerView
+                android:id="@+id/ruler_a"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/bg_outline" />
+
+            <dev.pixelock.app.ui.views.RulerView
+                android:id="@+id/ruler_b"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_outline" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>
