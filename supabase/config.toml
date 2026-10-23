@@ -1,0 +1,16 @@
+project_id = "pixelock"
+
+[auth]
+enable_anonymous_sign_ins = true
+
+# Razorpay cannot send a user token. The webhook proves itself with its signature instead.
+[functions.razorpay-webhook]
+verify_jwt = false
+
+# The gateway check can refuse newer token types. The function checks the user itself first.
+[functions.create-order]
+verify_jwt = false
+
+# Tapped from a chat app, so no token exists yet. It only redirects.
+[functions.join]
+verify_jwt = false
