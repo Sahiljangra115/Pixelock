@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Pixelock" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/accent</item>
+        <item name="colorOnPrimary">@color/accent_text</item>
+        <item name="colorSurface">@color/page</item>
+        <item name="colorOnSurface">@color/ink</item>
+        <item name="colorOnSurfaceVariant">@color/ink_soft</item>
+        <item name="colorOutline">@color/tile_line</item>
+        <item name="android:colorBackground">@color/page</item>
+        <item name="android:windowBackground">@color/page</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">@bool/light_bars</item>
+        <item name="android:windowLightNavigationBar">@bool/light_bars</item>
+        <item name="android:fontFamily">@font/inter_regular</item>
+        <item name="fontFamily">@font/inter_regular</item>
+    </style>
+
+    <style name="Text.Label" parent="">
+        <item name="android:textColor">@color/ink_soft</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+    <style name="Text.Caps" parent="">
+        <item name="android:textColor">@color/ink_soft</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:letterSpacing">0.12</item>
+        <item name="android:textAllCaps">true</item>
+    </style>
+    <style name="Text.Value" parent="">
+        <item name="android:textColor">@color/ink</item>
+        <item name="android:textSize">30sp</item>
+    </style>
+    <style name="Text.Body" parent="">
+        <item name="android:textColor">@color/ink</item>
+        <item name="android:textSize">15sp</item>
+    </style>
+    <style name="NavButton">
+        <item name="android:layout_width">72dp</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:background">@drawable/bg_nav_item</item>
+        <item name="tint">@color/nav_icon</item>
+    </style>
+    <style name="Slot" parent="Tile">
+        <item name="android:background">@drawable/bg_slot</item>
+    </style>
+    <style name="Tile">
+        <item name="android:background">@drawable/bg_tile</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:gravity">center</item>
+        <item name="android:orientation">vertical</item>
+    </style>
+</resources>
