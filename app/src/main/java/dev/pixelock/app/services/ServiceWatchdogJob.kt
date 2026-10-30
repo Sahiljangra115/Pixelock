@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
-/** Wakes every 15 minutes, survives reboot, and tells the user when blocking has stopped. */
+/** Wakes every 30 minutes, survives reboot, and tells the user when blocking has stopped. */
 class ServiceWatchdogJob : JobService() {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -55,7 +55,7 @@ class ServiceWatchdogJob : JobService() {
         fun schedule(context: Context) {
             val job = JobInfo.Builder(JOB_ID, ComponentName(context, ServiceWatchdogJob::class.java))
                 .setPersisted(true)
-                .setPeriodic(TimeUnit.MINUTES.toMillis(15))
+                .setPeriodic(TimeUnit.MINUTES.toMillis(30))
                 .build()
             context.getSystemService(JobScheduler::class.java).schedule(job)
         }

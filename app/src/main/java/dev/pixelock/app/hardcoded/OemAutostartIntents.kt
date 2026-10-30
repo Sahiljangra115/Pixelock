@@ -15,8 +15,9 @@ object OemAutostartIntents {
         "com.oplus.safecenter" to "com.oplus.safecenter.permission.startup.StartupAppListActivity",
         // Vivo, iQOO
         "com.vivo.permissionmanager" to "com.vivo.permissionmanager.activity.BgStartUpManagerActivity",
-        "com.iqoo.secure" to "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity",
-        // Samsung
-        "com.samsung.android.lool" to "com.samsung.android.sm.ui.battery.BatteryActivity"
+        "com.iqoo.secure" to "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity"
     )
+
+    /** Values of Build.MANUFACTURER, lower case. See dontkillmyapp.com for what each one does. */
+    val swipeKillers = setOf("xiaomi", "redmi", "poco", "oppo", "realme", "oneplus", "vivo", "iqoo", "huawei", "honor")
 }

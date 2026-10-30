@@ -32,6 +32,7 @@ Every one of these exists because breaking it can trap someone's phone. Do not w
 - Never trust `rootInActiveWindow` during a window change: it can still be the last app. Check its package before acting on it.
 - Content and scroll events are switched on only while a watched app is in front (`setWideEvents`). Everywhere else the service hears window changes only.
 - The one timer in the blocker is the usage tick, and it runs only while a distraction app is open.
+- No foreground service, not even during a timer. The system keeps an accessibility service bound without one. A foreground service adds a Stop button to Active apps (hidden only while device admin is active), and Stop leaves the service marked crashed: nothing blocks until Accessibility is toggled, the app updates, or the phone restarts. `safety_check.sh background` guards this.
 
 ## Processes
 
@@ -40,6 +41,8 @@ Every one of these exists because breaking it can trap someone's phone. Do not w
 | main | UI |
 | `:blocker` | `AppBlockerService` |
 | `:crash_handler` | `CrashLogActivity` |
+
+The main process must be free to die when the app closes, so `:blocker` must not bind to anything in it. That is why Room has no multi instance invalidation: a screen reads fresh rows when it starts, not when `:blocker` writes.
 
 Room only through `AppDatabase.getInstance()`. Settings only through `DataStoreManager`. Do not assume anything initialized in main also ran in `:blocker`. Settings changes reach the service through the settings flow in `PolicyStore`.
 
