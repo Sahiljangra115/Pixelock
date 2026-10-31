@@ -26,7 +26,11 @@ abstract class AppDatabase : RoomDatabase() {
 
         @Volatile private var INSTANCE: AppDatabase? = null
 
-        /** No destructive fallback: friends must not lose stats on update. */
+        /**
+         * No destructive fallback: friends must not lose stats on update.
+         * No multi instance invalidation: its service, bound from the blocker process, keeps the
+         * main process at visible priority forever. Screens read fresh rows each time they start.
+         */
         fun getInstance(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -34,7 +38,6 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "pixelock.db"
                 ).addMigrations(MIGRATION_1_2)
-                    .enableMultiInstanceInvalidation()
                     .build()
                     .also { INSTANCE = it }
             }

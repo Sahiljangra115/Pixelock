@@ -3,18 +3,21 @@ package dev.pixelock.app.ui.fragments
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.activity.result.contract.ActivityResultContracts
+import android.widget.TextView
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import dev.pixelock.app.R
 import dev.pixelock.app.core.ServiceHealth
 import dev.pixelock.app.databinding.FragmentListBinding
 import dev.pixelock.app.databinding.RowItemBinding
+import dev.pixelock.app.hardcoded.OemAutostartIntents
 import dev.pixelock.app.ui.activity.MainActivity
 import dev.pixelock.app.ui.updateSettings
 
@@ -24,9 +27,7 @@ class SetupFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val checks = ArrayList<Pair<RowItemBinding, () -> Boolean>>()
-
-    private val notifications =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { refresh() }
+    private var greyHint: TextView? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, state: Bundle?): View {
         _binding = FragmentListBinding.inflate(inflater, container, false)
@@ -38,43 +39,61 @@ class SetupFragment : Fragment() {
         binding.title.setText(R.string.setup_title)
         binding.back.setOnClickListener { finish() }
         val rows = binding.rows
-        rows.addRow(getString(R.string.setup_intro), null)
+        rows.addNote(getString(R.string.setup_intro))
 
-        check(R.string.setup_a11y, R.string.setup_a11y_d, { ServiceHealth.isBlockerRunning(context) }) {
-            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        rows.addHeading(getString(R.string.setup_needed))
+        permission(R.string.setup_a11y, R.string.setup_a11y_d, { ServiceHealth.isBlockerRunning(context) }) {
+            openFirst(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
-        rows.addRow(getString(R.string.setup_a11y_grey), null) {
-            startActivity(ServiceHealth.appInfoIntent(context))
+        greyHint = rows.addNote(getString(R.string.setup_a11y_grey)) {
+            openFirst(ServiceHealth.appInfoIntent(context))
         }
-        check(R.string.setup_overlay, R.string.setup_overlay_d, { Settings.canDrawOverlays(context) }) {
-            startActivity(ServiceHealth.overlayIntent(context))
-        }
-        check(R.string.setup_notif, R.string.setup_notif_d, {
+
+        rows.addHeading(getString(R.string.setup_helps))
+        permission(R.string.setup_notif, R.string.setup_notif_d, {
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
                 PackageManager.PERMISSION_GRANTED
         }) {
-            notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+            // The system page, because the permission prompt goes silent after two refusals.
+            openFirst(ServiceHealth.notificationIntent(context))
         }
-        check(R.string.setup_admin, R.string.setup_admin_d, { ServiceHealth.isAdminActive(context) }) {
-            startActivity(ServiceHealth.adminIntent(context))
+        permission(R.string.setup_battery, R.string.setup_battery_d, { ServiceHealth.isBatteryFree(context) }) {
+            openFirst(ServiceHealth.batteryIntent(context))
         }
-        check(R.string.setup_battery, R.string.setup_battery_d, { ServiceHealth.isBatteryFree(context) }) {
-            startActivity(ServiceHealth.batteryIntent(context))
+        permission(R.string.setup_admin, R.string.setup_admin_d, { ServiceHealth.isAdminActive(context) }) {
+            // Android has no page for one app's admin, and removing it lives on the hidden screen.
+            if (ServiceHealth.isAdminActive(context)) {
+                Toast.makeText(context, R.string.setup_admin_on, Toast.LENGTH_SHORT).show()
+            } else {
+                openFirst(ServiceHealth.adminIntent(context))
+            }
         }
         ServiceHealth.autostartIntent(context)?.let { intent ->
             rows.addRow(getString(R.string.setup_auto), getString(R.string.setup_auto_d)) {
-                runCatching { startActivity(intent) }
+                openFirst(intent)
+            }.also {
+                it.status.setText(R.string.setup_open)
+                it.status.visibility = View.VISIBLE
             }
         }
-        rows.addRow(getString(R.string.setup_continue), null) { finish() }
+        // No page exists for this one, and on these phones a swipe in recents can end the blocker.
+        if (Build.MANUFACTURER.lowercase() in OemAutostartIntents.swipeKillers) {
+            rows.addRow(getString(R.string.setup_lock), getString(R.string.setup_lock_d))
+        }
+        rows.addButton(getString(R.string.setup_continue)) { finish() }
     }
 
-    private fun check(title: Int, desc: Int, done: () -> Boolean, open: () -> Unit) {
-        val row = binding.rows.addRow(getString(title), getString(desc)) {
-            if (!done()) runCatching(open)
-        }
-        row.status.visibility = View.VISIBLE
-        checks += row to done
+    /** The switch only shows what the phone says. Tapping always opens the real setting. */
+    private fun permission(title: Int, desc: Int, granted: () -> Boolean, open: () -> Unit) {
+        val row = binding.rows.addRow(getString(title), getString(desc), open)
+        row.toggle.visibility = View.VISIBLE
+        checks += row to granted
+    }
+
+    /** Skins drop or guard some of these pages, so a tap always lands on something real. */
+    private fun openFirst(vararg intents: Intent) {
+        (intents.asList() + ServiceHealth.appInfoIntent(requireContext()))
+            .firstOrNull { runCatching { startActivity(it) }.isSuccess }
     }
 
     private fun finish() {
@@ -84,9 +103,8 @@ class SetupFragment : Fragment() {
 
     private fun refresh() {
         if (_binding == null) return
-        checks.forEach { (row, done) ->
-            row.status.setText(if (done()) R.string.setup_done else R.string.setup_todo)
-        }
+        checks.forEach { (row, granted) -> row.toggle.isChecked = granted() }
+        greyHint?.visibility = if (ServiceHealth.isBlockerRunning(requireContext())) View.GONE else View.VISIBLE
     }
 
     override fun onResume() {
@@ -97,6 +115,7 @@ class SetupFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         checks.clear()
+        greyHint = null
         _binding = null
     }
 }
