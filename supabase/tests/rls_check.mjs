@@ -17,6 +17,8 @@ await db.exec(`
   create schema auth;
   grant usage on schema auth to anon, authenticated, service_role;
   create table auth.users (id uuid primary key);
+  create schema storage;
+  create table storage.buckets (id text primary key, name text, public boolean);
   create function auth.uid() returns uuid language sql stable as
     $$ select nullif(current_setting('request.jwt.sub', true), '')::uuid $$;
 `)
@@ -77,12 +79,37 @@ await fails(B, `select public.join_group('NOPE', 'x')`, [], /group_not_found/)
 await fails(B, `select public.join_group($1, '   ')`, [code], /check constraint/)
 await fails(null, `select public.create_group('x')`, [], /permission denied/)
 
+// Laptop link: A is the phone, C is the laptop.
+const [{ create_pair_code: pair }] = await as(A, `select public.create_pair_code()`)
+assert.match(pair, /^[2-9A-H]{12}$/)
+const pushDay = `select public.push_laptop_day($1::date, $2, $3, $4::jsonb)`
+await fails(C, pushDay, ['2026-10-30', 1, 1, '[]'], /not_linked/)
+await fails(C, `select public.redeem_pair_code('NOTACODE0000')`, [], /bad_pair_code/)
+await fails(A, `select public.redeem_pair_code($1)`, [pair], /bad_pair_code/)
+await as(C, `select public.redeem_pair_code($1)`, [pair.toLowerCase() + '  '])
+await fails(B, `select public.redeem_pair_code($1)`, [pair], /bad_pair_code/)
+const today = (await db.query(`select current_date::text d`)).rows[0].d
+await as(C, pushDay, [today, 50, 20, '[{"app":"Code","cat":"f","min":50}]'])
+await as(C, pushDay, [today, 70, 20, '[{"app":"Code","cat":"f","min":70}]'])
+await fails(C, pushDay, ['2020-01-01', 1, 1, '[]'], /bad_date/)
+await fails(C, pushDay, [today, 1, 1, '{}'], /check constraint/)
+await fails(null, pushDay, [today, 1, 1, '[]'], /permission denied/)
+const split = await as(A, `select * from public.board($1, '2000-01-01', '2100-01-01')`, [code])
+const me = split.find(r => r.is_me)
+assert.deepEqual([me.focused_min, me.phone_min, me.laptop_min, me.laptop_distracted_min].map(Number), [230, 160, 70, 20])
+assert.equal((await as(A, `select * from public.laptop_days`)).length, 1)
+assert.equal((await as(B, `select * from public.laptop_days`)).length, 0)
+assert.equal((await as(C, `select * from public.laptop_days`)).length, 0)
+await fails(C, `insert into public.laptop_days (owner, date, focused_min, distracted_min) values ($1, current_date, 1, 1)`, [A], /permission denied/)
+
 // Leaving, then deleting all data.
 await as(B, `select public.leave_group($1)`, [code])
 assert.equal((await as(A, `select * from public.board($1, '2026-10-29', '2026-10-30')`, [code])).length, 1)
 await as(A, `select public.delete_my_data()`)
 assert.equal((await as(A, `select * from public.day_totals`)).length, 0)
 assert.equal((await as(A, `select * from public.members`)).length, 0)
+assert.equal((await as(A, `select * from public.laptop_days`)).length, 0)
+await fails(C, pushDay, [today, 1, 1, '[]'], /not_linked/)
 await fails(B, `select public.join_group($1, 'Ben')`, [code], /group_not_found/)
 
 // Paid orders. Only the service key can mark one paid, and it pays out once.
