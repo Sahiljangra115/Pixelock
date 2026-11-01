@@ -74,7 +74,6 @@
             <TextView android:id="@+id/mode_day" style="@style/Tile" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:text="@string/stats_day" android:textColor="@color/tile_text" />
             <TextView android:id="@+id/mode_month" style="@style/Tile" android:layout_width="match_parent" android:layout_height="0dp" android:layout_marginVertical="8dp" android:layout_weight="1" android:text="@string/stats_month" android:textColor="@color/tile_text" />
             <TextView android:id="@+id/mode_year" style="@style/Tile" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:text="@string/stats_year" android:textColor="@color/tile_text" />
-            <TextView android:id="@+id/friends" style="@style/Tile" android:layout_width="match_parent" android:layout_height="0dp" android:layout_marginTop="8dp" android:layout_weight="1" android:drawableTop="@drawable/ic_people" android:paddingVertical="6dp" android:text="@string/friends" android:textColor="@color/tile_text" />
         </LinearLayout>
 
         <FrameLayout

@@ -29,12 +29,16 @@ data class Order(val id: String, val url: String)
 
 /** Blocking calls. Run them off the main thread. Throws [BackendException] on any failure. */
 interface Backend {
-    fun createGroup(alias: String): String
+    fun createGroup(alias: String, name: String): String
     fun joinGroup(code: String, alias: String)
+    /** Members only. Empty for a group made before names existed. */
+    fun groupName(code: String): String
     fun leaveGroup(code: String)
     fun board(code: String, from: String, to: String): List<BoardRow>
     fun pushTotals(rows: List<DayUpload>)
     fun deleteMyData()
+    /** A one time code that links a laptop to this phone's id. */
+    fun createPairCode(): String
     fun createOrder(purpose: String): Order
     fun orderStatus(id: String): String
     fun consumeOrder(id: String): Boolean

@@ -2,9 +2,9 @@ package dev.pixelock.app.ui.activity
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -16,12 +16,11 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import dev.pixelock.app.core.DeviceAllowList
+import dev.pixelock.app.core.InstalledApps
+import dev.pixelock.app.core.InstalledApps.App
 import dev.pixelock.app.databinding.ActivityPickerBinding
 import dev.pixelock.app.databinding.ItemAppBinding
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /** Picks apps for a list. Always allowed apps never appear, so they cannot be picked by mistake. */
 class AppPickerActivity : AppCompatActivity() {
@@ -34,8 +33,6 @@ class AppPickerActivity : AppCompatActivity() {
                 .putStringArrayListExtra(EXTRA_SELECTED, ArrayList(selected))
     }
 
-    private data class App(val pkg: String, val label: String, val icon: Drawable)
-
     private lateinit var binding: ActivityPickerBinding
     private val selected = LinkedHashSet<String>()
     private var all: List<App> = emptyList()
@@ -43,7 +40,7 @@ class AppPickerActivity : AppCompatActivity() {
     private val adapter = object : ListAdapter<App, RecyclerView.ViewHolder>(
         object : DiffUtil.ItemCallback<App>() {
             override fun areItemsTheSame(a: App, b: App) = a.pkg == b.pkg
-            override fun areContentsTheSame(a: App, b: App) = a.pkg == b.pkg
+            override fun areContentsTheSame(a: App, b: App) = a.label == b.label
         }
     ) {
         override fun onCreateViewHolder(parent: ViewGroup, type: Int): RecyclerView.ViewHolder {
@@ -54,13 +51,25 @@ class AppPickerActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             val app = getItem(position)
             val row = holder.itemView.tag as ItemAppBinding
-            row.icon.setImageDrawable(app.icon)
+            showIcon(row, app)
             row.name.text = app.label
             row.check.isChecked = app.pkg in selected
             row.root.setOnClickListener {
                 if (!selected.remove(app.pkg)) selected += app.pkg
                 row.check.isChecked = app.pkg in selected
             }
+        }
+    }
+
+    /** The row may be reused by the time the icon is ready, so the tag decides who gets it. */
+    private fun showIcon(row: ItemAppBinding, app: App) {
+        row.icon.tag = app.pkg
+        val loaded = InstalledApps.loadedIcon(app)
+        row.icon.setImageDrawable(loaded)
+        if (loaded != null) return
+        lifecycleScope.launch {
+            val icon = InstalledApps.icon(this@AppPickerActivity, app)
+            if (row.icon.tag == app.pkg) row.icon.setImageDrawable(icon)
         }
     }
 
@@ -85,20 +94,15 @@ class AppPickerActivity : AppCompatActivity() {
             finish()
         }
 
+        // The cached list shows at once. The fresh read then adds anything installed since.
+        all = InstalledApps.cached
+        filter("")
+        binding.loading.visibility = if (all.isEmpty()) View.VISIBLE else View.GONE
         lifecycleScope.launch {
-            all = withContext(Dispatchers.IO) { loadApps() }
+            all = InstalledApps.refresh(this@AppPickerActivity)
+            binding.loading.visibility = View.GONE
             filter(binding.search.text?.toString().orEmpty())
         }
-    }
-
-    private fun loadApps(): List<App> {
-        val blockedOut = DeviceAllowList.resolve(this)
-        val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        return packageManager.queryIntentActivities(launcher, 0)
-            .distinctBy { it.activityInfo.packageName }
-            .filter { it.activityInfo.packageName !in blockedOut }
-            .map { App(it.activityInfo.packageName, it.loadLabel(packageManager).toString(), it.loadIcon(packageManager)) }
-            .sortedBy { it.label.lowercase() }
     }
 
     private fun filter(query: String) {

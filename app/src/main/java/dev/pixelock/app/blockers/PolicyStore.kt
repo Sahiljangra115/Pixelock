@@ -6,6 +6,7 @@ import dev.pixelock.app.core.CrashGuard
 import dev.pixelock.app.core.DeviceAllowList
 import dev.pixelock.app.core.StrictModeController
 import dev.pixelock.app.data.models.Settings
+import dev.pixelock.app.domain.BannedApp
 import dev.pixelock.app.domain.PolicyState
 import dev.pixelock.app.domain.isActive
 import dev.pixelock.app.domain.isPaused
@@ -47,6 +48,7 @@ class PolicyStore {
                     bags = s.bags,
                     focusBlockList = s.focusBlockList.toSet(),
                     shortVideoBlockingOn = s.shortVideoBlockingOn,
+                    bannedPackages = s.bannedApps.flatMap { it.packages }.toSet(),
                     unlocks = s.unlocks,
                     alwaysAllow = DeviceAllowList.resolve(service),
                     enforcementDisabled = strict.isEnforcementDisabled(s),
@@ -82,6 +84,11 @@ class PolicyStore {
     fun shadeLockOn(): Boolean = settings.shadeLockOn
 
     fun strictEnforcing(): Boolean = strict.isEnforcing(settings)
+
+    fun bannedApps(): List<BannedApp> = settings.bannedApps
+
+    /** The kill switch must end this too, or a stuck phone keeps a guard it cannot get past. */
+    fun uninstallLockOn(): Boolean = settings.uninstallLock && !strict.isEnforcementDisabled(settings)
 
     fun onDestroy() {
         job?.cancel()

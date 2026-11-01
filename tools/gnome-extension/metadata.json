@@ -1,0 +1,6 @@
+{
+  "uuid": "pixelock-focus@pixelock.dev",
+  "name": "Pixelock focus",
+  "description": "Tells the Pixelock laptop tracker which app has focus. Wayland hides this from other programs.",
+  "shell-version": ["47", "48", "49", "50", "51"]
+}

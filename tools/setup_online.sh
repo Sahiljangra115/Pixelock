@@ -218,7 +218,7 @@ set_property() {
 run_wizard() {
 
 ENV_FILE=.setup.env
-TOTAL_STAGES=8
+TOTAL_STAGES=9
 
 banner "Pixelock online setup"
 
@@ -298,6 +298,31 @@ else
 fi
 pause "Press Enter to continue"
 
+stage "Passcode for the hidden screen"
+say "Friends get the same app as you. This passcode keeps them off the kill switch."
+warn "Only you can then remove the app from a friend's phone. Tell them before they install."
+note "Only a salted hash goes in the APK, so use 10 or more characters and save it somewhere safe."
+if grep -q '^ADMIN_PASSCODE_HASH=' local.properties 2>/dev/null && ! confirm "A passcode is set. Change it?"; then
+  note "Keeping the passcode you have."
+else
+  while :; do
+    printf '  %sNew passcode:%s ' "$BOLD" "$RESET"; read -rs passcode; printf '\n'
+    printf '  %sSame again:%s ' "$BOLD" "$RESET"; read -rs again; printf '\n'
+    [[ "$passcode" == "$again" && ${#passcode} -ge 10 ]] && break
+    warn "They must match and be 10 or more characters."
+  done
+  salt=$(openssl rand -base64 16)
+  # Same as EndPassword.hash. Passed by env so the passcode never shows in a process list.
+  hash=$(PIXELOCK_PASSCODE="$passcode" PIXELOCK_SALT="$salt" python3 -c '
+import base64, hashlib, os
+key = hashlib.pbkdf2_hmac("sha256", os.environ["PIXELOCK_PASSCODE"].encode(), base64.b64decode(os.environ["PIXELOCK_SALT"]), 120000, 32)
+print(base64.b64encode(key).decode())')
+  unset passcode again
+  set_property ADMIN_PASSCODE_SALT "$salt"
+  set_property ADMIN_PASSCODE_HASH "$hash"
+fi
+pause "Press Enter to continue"
+
 stage "Build the app and upload it"
 say "Invite links send friends without the app to this APK."
 ./gradlew assembleRelease --console=plain -q
@@ -321,11 +346,18 @@ check_status() {
 }
 check_status 200 "$SUPABASE_URL/auth/v1/signup" -X POST -H "apikey: $PUBLISHABLE_KEY" \
   -H 'content-type: application/json' -d '{}'
+token=$(curl -s -X POST "$SUPABASE_URL/auth/v1/signup" -H "apikey: $PUBLISHABLE_KEY" -H 'content-type: application/json' -d '{}' |
+  python3 -c 'import json, sys; print(json.load(sys.stdin).get("access_token", ""))' || true)
+check_status 200 "$SUPABASE_URL/rest/v1/rpc/create_group" -X POST -H "apikey: $PUBLISHABLE_KEY" \
+  -H "authorization: Bearer $token" -H 'content-type: application/json' -d '{"p_alias":"Check","p_name":"Check"}'
+check_status 204 "$SUPABASE_URL/rest/v1/rpc/delete_my_data" -X POST -H "apikey: $PUBLISHABLE_KEY" \
+  -H "authorization: Bearer $token" -H 'content-type: application/json' -d '{}'
 check_status 302 "$SUPABASE_URL/functions/v1/join?c=2222222222222222"
 check_status 200 "$SUPABASE_URL/storage/v1/object/public/app/pixelock.apk" -I
 pause "Press Enter to continue"
 
 stage "Put it on your phone"
+say "If Pixelock Debug is on your phone, turn off its uninstall lock on the hidden screen and uninstall it."
 say "Plug in the phone with USB debugging on, then run:"
 say "adb install -r app/build/outputs/apk/release/app-release.apk"
 say "After that, open Friends, make a group, and open it to invite people."

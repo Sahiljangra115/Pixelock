@@ -66,5 +66,5 @@ Pixelock is a focus and digital wellbeing application for Android 13 and higher 
 
 ### 4. Group Sync & Backend
 - **Supabase Edge Functions**: Serves friend group invites, cryptographic challenge verification, and Razorpay webhook processing.
-- **Privacy Design**: Only aggregate daily focus minutes are shared across friend groups. Raw app lists and usage records never leave the local device.
-- **Laptop Integration (`pixelock_laptop.py`)**: ActivityWatch integration that pairs via QR code and cryptographically passes desktop focus time to the phone ledger.
+- **Privacy Design**: Only aggregate daily focus minutes (phone, laptop, total) are shared across friend groups. Phone app lists never leave the phone. Laptop app names and minutes are stored in the owner's private rows and are never returned to friends.
+- **Laptop Integration (`pixelock_laptop.py`)**: Background tracker (Windows Task Scheduler or Linux systemd user service) that samples the focused app, counts focused and distracting minutes per app, and pushes the whole day to Supabase every 5 minutes. It links to the phone's id with a one time code. Per app names are stored in `laptop_days`, visible only to their owner. The leaderboard shows phone, laptop and total minutes.

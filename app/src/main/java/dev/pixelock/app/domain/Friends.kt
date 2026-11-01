@@ -11,12 +11,19 @@ data class BoardRow(
     val alias: String,
     val focusedMin: Long,
     val distractedMin: Long,
-    val isMe: Boolean
+    val isMe: Boolean,
+    /** Focused minutes by device. focusedMin is the total of both. */
+    val phoneMin: Long = 0,
+    val laptopMin: Long = 0
 )
 
 enum class BoardPeriod { TODAY, WEEK, MONTH }
 
 const val ALIAS_MAX = 24
+/** Same limit as the check on the groups table. */
+const val GROUP_NAME_MAX = 30
+/** Same limit as join_group. */
+const val GROUP_MAX = 20
 
 // Same limits as the checks on the day_totals table.
 private const val MAX_FOCUSED_MIN = 2880

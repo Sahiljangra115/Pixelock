@@ -14,7 +14,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import dev.pixelock.app.R
 import dev.pixelock.app.core.GroupSync
+import dev.pixelock.app.core.InstalledApps
 import dev.pixelock.app.core.PaymentFlow
+import dev.pixelock.app.core.ServiceHealth
 import dev.pixelock.app.core.SessionManager
 import dev.pixelock.app.data.DataStoreManager
 import dev.pixelock.app.data.db.AppDatabase
@@ -71,9 +73,16 @@ class MainActivity : AppCompatActivity() {
         if (intent.getBooleanExtra(EXTRA_OPEN_SETTINGS, false)) binding.root.post { openOverlay(SettingsFragment()) }
         if (savedInstanceState == null) binding.root.post { openInvite(intent) }
 
+        // Filled here so the app list opens with its rows ready.
+        lifecycleScope.launch { runCatching { InstalledApps.refresh(applicationContext) } }
         lifecycleScope.launch {
-            val settings = DataStoreManager(this@MainActivity).settings.first()
-            if (!settings.onboardingDone && savedInstanceState == null) openOverlay(SetupFragment())
+            val store = DataStoreManager(this@MainActivity)
+            val settings = store.settings.first()
+            if (!settings.onboardingDone && savedInstanceState == null) {
+                // Setup can be left with system back, so a working blocker counts as finished.
+                if (ServiceHealth.isBlockerRunning(this@MainActivity)) store.update { it.copy(onboardingDone = true) }
+                else openOverlay(SetupFragment())
+            }
             runCatching { ServiceWatchdogJob.schedule(this@MainActivity) }
             if (settings.groups.isNotEmpty()) runCatching { GroupSync.schedule(this@MainActivity) }
         }

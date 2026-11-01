@@ -27,18 +27,28 @@ object GroupSync {
     private const val BACKFILL_DAYS = 31L
     private const val JOB_ID = 7713
 
-    suspend fun create(context: Context, alias: String) = withContext(Dispatchers.IO) {
-        val code = Backends.get(context).createGroup(alias)
-        added(context, code, alias)
+    /** Returns the new group's code. */
+    suspend fun create(context: Context, alias: String, name: String): String = withContext(Dispatchers.IO) {
+        val code = Backends.get(context).createGroup(alias, name)
+        added(context, code, alias, name)
+        code
     }
 
     suspend fun join(context: Context, code: String, alias: String) = withContext(Dispatchers.IO) {
-        Backends.get(context).joinGroup(code, alias)
-        added(context, code, alias)
+        val backend = Backends.get(context)
+        backend.joinGroup(code, alias)
+        // Only a label, so a failed read must not undo the join.
+        added(context, code, alias, runCatching { backend.groupName(code) }.getOrDefault(""))
     }
 
-    private suspend fun added(context: Context, code: String, alias: String) {
-        DataStoreManager(context).update { it.copy(alias = alias, groups = (it.groups + code).distinct()) }
+    private suspend fun added(context: Context, code: String, alias: String, name: String) {
+        DataStoreManager(context).update {
+            it.copy(
+                alias = alias,
+                groups = (it.groups + code).distinct(),
+                groupNames = if (name.isEmpty()) it.groupNames else it.groupNames + (code to name)
+            )
+        }
         schedule(context)
         runCatching { push(context) }
     }
@@ -57,14 +67,14 @@ object GroupSync {
         if (store.settings.first().groups.none { it != code }) backend.deleteMyData()
         store.update {
             val left = it.groups - code
-            it.copy(groups = left, syncFrom = if (left.isEmpty()) "" else it.syncFrom)
+            it.copy(groups = left, groupNames = it.groupNames - code, syncFrom = if (left.isEmpty()) "" else it.syncFrom)
         }
         if (store.settings.first().groups.isEmpty()) cancel(context)
     }
 
     suspend fun deleteAll(context: Context) = withContext(Dispatchers.IO) {
         Backends.get(context).deleteMyData()
-        DataStoreManager(context).update { it.copy(groups = emptyList(), syncFrom = "") }
+        DataStoreManager(context).update { it.copy(groups = emptyList(), groupNames = emptyMap(), syncFrom = "") }
         cancel(context)
     }
 

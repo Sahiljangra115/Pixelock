@@ -15,4 +15,7 @@
     <color name="pill">#544C4A</color>
     <color name="on_pill">#FFFFFF</color>
     <color name="nav">#EFEFEF</color>
+    <!-- Theme previews. Same in both themes, so each block always shows its own look. -->
+    <color name="swatch_light">#DEDEDE</color>
+    <color name="swatch_dark">#161514</color>
 </resources>

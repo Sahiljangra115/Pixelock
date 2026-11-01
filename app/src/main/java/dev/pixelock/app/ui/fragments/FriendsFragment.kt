@@ -7,19 +7,17 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import dev.pixelock.app.R
 import dev.pixelock.app.core.GroupSync
-import dev.pixelock.app.data.db.AppDatabase
 import dev.pixelock.app.data.models.Settings
+import dev.pixelock.app.data.remote.Backends
 import dev.pixelock.app.databinding.FragmentListBinding
 import dev.pixelock.app.domain.ALIAS_MAX
+import dev.pixelock.app.domain.GROUP_NAME_MAX
 import dev.pixelock.app.domain.LaptopToken
 import dev.pixelock.app.domain.parseGroupCode
 import dev.pixelock.app.ui.activity.MainActivity
@@ -28,7 +26,8 @@ import dev.pixelock.app.ui.durationLabel
 import dev.pixelock.app.ui.onSettings
 import dev.pixelock.app.ui.online
 import dev.pixelock.app.ui.updateSettings
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 
 class FriendsFragment : Fragment() {
@@ -44,7 +43,6 @@ class FriendsFragment : Fragment() {
     private val binding get() = _binding!!
 
     private var settings = Settings()
-    private var laptopMin = 0
     private var joinCode: String? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, state: Bundle?): View {
@@ -65,45 +63,47 @@ class FriendsFragment : Fragment() {
                 confirmJoin(it)
             }
         }
-        val dao = AppDatabase.getInstance(requireContext()).dayTotalDao()
-        val owner = viewLifecycleOwner
-        val today = LocalDate.now().toString()
-        owner.lifecycleScope.launch {
-            owner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                dao.observeRange(today, today).collect { rows ->
-                    laptopMin = rows.firstOrNull()?.laptopMin ?: 0
-                    render()
-                }
-            }
-        }
     }
 
     private fun render() {
         val rows = _binding?.rows ?: return
         val context = requireContext()
         rows.removeAllViews()
-        rows.addRow(
+        rows.addGroup().addRow(
             settings.alias.ifEmpty { getString(R.string.friends_name_empty) },
             getString(R.string.friends_name_d)
         ) { rename() }
+        val groups = rows.addGroup()
         settings.groups.forEach { code ->
-            rows.addRow(getString(R.string.friends_group_row, code), null) {
+            groups.addPageRow(settings.groupNames[code] ?: getString(R.string.friends_group_row, code), null) {
                 (activity as? MainActivity)?.openOverlay(GroupFragment.create(code))
             }
         }
-        rows.addRow(getString(R.string.friends_create), null) {
-            withAlias { alias -> online { GroupSync.create(context.applicationContext, alias) } }
-        }
-        rows.addRow(getString(R.string.friends_join), null) {
+        groups.addRow(getString(R.string.friends_create), null) { makeGroup() }
+        groups.addRow(getString(R.string.friends_join), null) {
             askText(R.string.friends_join, R.string.friends_code_hint, "", CODE_MAX) { handleCode(it) }
         }
-        rows.addRow(getString(R.string.friends_scan), getString(R.string.friends_scan_d)) { scan() }
-        rows.addRow(
+        groups.addRow(getString(R.string.friends_scan), getString(R.string.friends_scan_d)) { scan() }
+        val more = rows.addGroup()
+        more.addRow(
             getString(R.string.laptop),
-            getString(R.string.laptop_d, context.durationLabel(laptopMin))
+            getString(R.string.laptop_link_d)
         ) { showLaptop() }
         if (settings.groups.isNotEmpty()) {
-            rows.addRow(getString(R.string.friends_delete), getString(R.string.friends_delete_d)) { confirmDelete() }
+            more.addRow(getString(R.string.friends_delete), getString(R.string.friends_delete_d)) { confirmDelete() }
+        }
+    }
+
+    /** Goes straight on to inviting, since a group of one is no use. */
+    private fun makeGroup() {
+        val context = requireContext().applicationContext
+        withAlias { alias ->
+            askText(R.string.group_name, R.string.group_name_hint, "", GROUP_NAME_MAX) { name ->
+                online {
+                    val code = GroupSync.create(context, alias, name)
+                    (activity as? MainActivity)?.openOverlay(GroupFragment.create(code, invite = true))
+                }
+            }
         }
     }
 
@@ -163,18 +163,17 @@ class FriendsFragment : Fragment() {
             .show()
     }
 
+    /** Makes a one time code. The laptop script spends it once and from then on syncs on its own. */
     private fun showLaptop() {
-        val key = settings.laptopKey.ifEmpty { LaptopToken.newKey() }
-        if (settings.laptopKey.isEmpty()) updateSettings { it.copy(laptopKey = key) }
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.laptop_t)
-            .setMessage(getString(R.string.laptop_steps, key))
-            .setPositiveButton(R.string.friends_scan) { _, _ -> scan() }
-            .setNeutralButton(R.string.laptop_type) { _, _ ->
-                askText(R.string.laptop_t, R.string.laptop_code_hint, "", CODE_MAX) { addLaptop(it) }
-            }
-            .setNegativeButton(R.string.close, null)
-            .show()
+        val context = requireContext()
+        online {
+            val code = withContext(Dispatchers.IO) { Backends.get(context.applicationContext).createPairCode() }
+            MaterialAlertDialogBuilder(context)
+                .setTitle(R.string.laptop_t)
+                .setMessage(getString(R.string.laptop_link_steps, code))
+                .setPositiveButton(R.string.close, null)
+                .show()
+        }
     }
 
     private fun addLaptop(text: String) {

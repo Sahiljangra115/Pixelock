@@ -7,24 +7,24 @@
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="68dp"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/bg_card">
+        android:paddingHorizontal="16dp">
 
         <ImageButton
             android:id="@+id/back"
-            android:layout_width="56dp"
-            android:layout_height="match_parent"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="start|center_vertical"
+            android:background="@drawable/bg_pill"
             android:contentDescription="@string/back"
             android:src="@drawable/ic_back" />
 
         <TextView
             android:id="@+id/title"
-            style="@style/Text.Body"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center" />
+            style="@style/Text.Title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:accessibilityHeading="true" />
     </FrameLayout>
 
     <ScrollView
@@ -37,6 +37,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp" />
+            android:paddingHorizontal="16dp"
+            android:paddingBottom="16dp" />
     </ScrollView>
 </LinearLayout>

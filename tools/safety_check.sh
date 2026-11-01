@@ -65,7 +65,8 @@ seed() {
 # The end password is "pixelock1". The hash is PBKDF2 SHA256, 120000 rounds, salt "c2FsdHNhbHRzYWx0c2FsdA==".
 PASSWORD=pixelock1
 PASSWORD_JSON='"endPasswordSalt":"c2FsdHNhbHRzYWx0c2FsdA==","endPasswordHash":"yvELNCLzkwYPZq9r2X/Bf3anTRmsUkGjluFfY9/tZrY="'
-base() { echo "\"onboardingDone\":true,\"focusBlockList\":[\"$BLOCKED\"],$PASSWORD_JSON"; }
+base() { echo "\"onboardingDone\":true,\"uninstallLock\":false,\"focusBlockList\":[\"$BLOCKED\"],$PASSWORD_JSON"; }
+locked_base() { base | sed 's/"uninstallLock":false/"uninstallLock":true/'; }
 session_json() { echo "\"session\":{\"id\":\"t\",\"startedAtMs\":$1,\"endsAtMs\":$2}"; }
 
 # uiautomator unbinds accessibility services while it runs, and the system binds a new instance after.
@@ -407,7 +408,7 @@ group_friends() {
   adb logcat -b crash -c
   seed "{$(base),\"alias\":\"Sam\"}"
   open_app
-  tap_text 'content-desc="Stats"'
+  tap_text 'content-desc="Settings"'
   sleep 1
   tap_text 'text="Friends"'
   sleep 1
@@ -589,23 +590,71 @@ group_background() {
   go_home
 }
 
+# The lock has to hold with no timer, and must never close a page setup needs.
+group_lock() {
+  echo "== uninstall lock and install block, with no timer"
+  adb shell dpm set-active-admin "$ADMIN" >/dev/null 2>&1
+  seed "{$(locked_base)}"
+  go_home
+  adb shell am start -a android.settings.APPLICATION_DETAILS_SETTINGS -d package:$PKG >/dev/null
+  check "app info page is closed" "wait_for '! is_front com.android.settings' 6"
+  adb shell am start -a android.settings.ACCESSIBILITY_SETTINGS >/dev/null
+  sleep 4
+  check "accessibility list stays open for setup" "is_front com.android.settings"
+  go_home
+  adb shell am start -a android.settings.APP_NOTIFICATION_SETTINGS --es android.provider.extra.APP_PACKAGE $PKG >/dev/null
+  sleep 4
+  check "notification page stays open for setup" "is_front com.android.settings"
+  go_home
+  adb shell am start -a android.settings.WIFI_SETTINGS >/dev/null
+  sleep 3
+  check "wifi settings stay open" "is_front com.android.settings"
+  go_home
+  # The switch page refuses to open as a new task, so it has to be reached from its list.
+  # Settings must start fresh, or Android just brings its last page back.
+  adb shell am force-stop com.android.settings
+  adb shell 'am start -n "com.android.settings/.Settings\$DeviceAdminSettingsActivity"' >/dev/null
+  sleep 3
+  tap_text 'text="Pixelock'
+  check "device admin switch page is closed" "wait_for '! is_front com.android.settings' 6"
+  check "uninstall is refused with no timer" "! adb shell pm uninstall $PKG 2>&1 | grep -q Success"
+  seed "{$(locked_base),\"strict\":{\"enforcementDisabled\":true}}"
+  go_home
+  for _ in 1 2; do
+    adb shell am start -a android.settings.APPLICATION_DETAILS_SETTINGS -d package:$PKG >/dev/null
+    sleep 4
+    is_front com.android.settings && break
+  done
+  check "kill switch state lets go of the lock" "is_front com.android.settings"
+  go_home
+  seed "{$(base),\"bannedApps\":[{\"name\":\"Blocked\",\"packages\":[\"$BLOCKED\"]}]}"
+  go_home
+  start_blocked
+  check "a banned app stays closed with no timer" "wait_for '! is_front $BLOCKED' 6"
+  go_home
+  seed "{$(base)}"
+  adb shell dpm remove-active-admin "$ADMIN" >/dev/null 2>&1
+}
+
 group_cleanup() {
   echo "== app leaves cleanly"
   adb shell dpm set-active-admin "$ADMIN" >/dev/null 2>&1
-  seed "{$(base)}"
+  seed "{$(locked_base)}"
   open_settings_end
-  check "Settings does not offer uninstall" "! on_screen 'Allow uninstall'"
+  check "Settings does not offer uninstall" "! on_screen 'Uninstall lock'"
+  check "Settings does not offer the install block" "! on_screen 'Apps you cannot install'"
   go_home
   open_developer
-  tap_text 'text="Allow uninstall"'
+  check "the hidden screen has the install block" "on_screen 'Apps you cannot install'"
+  tap_text 'text="Uninstall lock"'
   sleep 2
-  check "the hidden screen removes the uninstall guard" "! admin_active"
+  check "the hidden screen turns off the uninstall lock" "! admin_active"
   adb shell am force-stop $PKG
   check "uninstall works when no timer runs" "adb shell pm uninstall $PKG 2>&1 | grep -q Success"
   check "phone still fine after uninstall" "go_home; is_home"
 }
 
-GROUPS_TO_RUN=${*:-basic block pause strict shade expiry kill crash friends pay clock update monkey background cleanup}
+GROUPS_TO_RUN=${*:-basic block pause strict shade expiry kill crash friends pay clock update monkey background lock cleanup}
 for g in $GROUPS_TO_RUN; do "group_$g"; done
 echo
 echo "passed $PASS, failed $FAIL. Screens in $SHOTS"

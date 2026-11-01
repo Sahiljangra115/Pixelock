@@ -17,6 +17,7 @@ import dev.pixelock.app.domain.MINUTES_PER_DAY
 import dev.pixelock.app.domain.Routine
 import dev.pixelock.app.domain.activeEndMs
 import dev.pixelock.app.domain.canEdit
+import dev.pixelock.app.ui.askTime
 import dev.pixelock.app.ui.durationLabel
 import dev.pixelock.app.ui.minuteLabel
 import dev.pixelock.app.ui.onSettings
@@ -46,8 +47,12 @@ class RoutinesFragment : Fragment() {
         buildDays()
         binding.startRuler.apply { min = 0; max = MINUTES_PER_DAY; step = 15; commitOnRelease = true }
         binding.endRuler.apply { min = 0; max = MINUTES_PER_DAY; step = 15; commitOnRelease = true }
-        binding.startRuler.onChange = { v -> change { it.copy(startMin = v) } }
-        binding.endRuler.onChange = { v -> change { it.copy(endMin = v) } }
+        binding.startRuler.onChange = ::setStart
+        binding.endRuler.onChange = ::setEnd
+        binding.startRuler.onScrub = { v -> showRange(start = v) }
+        binding.endRuler.onScrub = { v -> showRange(end = v) }
+        binding.startValue.setOnClickListener { type(R.string.start, routine().startMin, ::setStart) }
+        binding.endValue.setOnClickListener { type(R.string.end, routine().endMin, ::setEnd) }
         binding.lock.setOnClickListener { change { it.copy(locked = !it.locked) } }
         binding.enable.setOnClickListener { change { it.copy(enabled = !it.enabled) } }
 
@@ -130,14 +135,27 @@ class RoutinesFragment : Fragment() {
 
     private fun routine(): Routine = settings.routines[open]
 
+    private fun setStart(value: Int) = change { it.copy(startMin = value) }
+
+    private fun setEnd(value: Int) = change { it.copy(endMin = value) }
+
+    private fun type(title: Int, minutes: Int, onDone: (Int) -> Unit) {
+        if (editable()) askTime(title, minutes, onDone) else refuse()
+    }
+
+    private fun editable() = canEdit(routine().locked, timerRunning, enforcing)
+
+    private fun refuse() {
+        Toast.makeText(requireContext(), R.string.edit_refused, Toast.LENGTH_SHORT).show()
+    }
+
     private fun change(edit: (Routine) -> Routine) {
-        val target = routine()
-        if (!canEdit(target.locked, timerRunning, enforcing)) {
-            Toast.makeText(requireContext(), R.string.edit_refused, Toast.LENGTH_SHORT).show()
+        if (!editable()) {
+            refuse()
             render()
             return
         }
-        val id = target.id
+        val id = routine().id
         updateSettings { s -> s.copy(routines = s.routines.map { if (it.id == id) edit(it) else it }) }
     }
 
@@ -147,10 +165,8 @@ class RoutinesFragment : Fragment() {
         val now = ZonedDateTime.now()
         val endMs = routine.activeEndMs(now)
         b.rangeClock.setActive(endMs != null)
-        b.rangeClock.text = "${minuteLabel(routine.startMin)}  ${minuteLabel(routine.endMin)}"
 
-        val length = ((routine.endMin - routine.startMin + MINUTES_PER_DAY) % MINUTES_PER_DAY)
-            .let { if (it == 0 && routine.startMin != routine.endMin) MINUTES_PER_DAY else it }
+        val length = length(routine.startMin, routine.endMin)
         b.strip.progress = if (endMs == null || length == 0) 0f else {
             1f - (endMs - System.currentTimeMillis()) / (length * 60_000f)
         }
@@ -165,9 +181,23 @@ class RoutinesFragment : Fragment() {
         b.lock.setImageResource(if (routine.locked) R.drawable.ic_lock else R.drawable.ic_lock_open)
         b.enable.isSelected = routine.enabled
         b.enable.text = getString(if (routine.enabled) R.string.routine_on else R.string.routine_off)
-        val state = getString(if (routine.enabled) R.string.routine_on else R.string.routine_off)
+        showRange()
+    }
+
+    private fun length(start: Int, end: Int): Int =
+        ((end - start + MINUTES_PER_DAY) % MINUTES_PER_DAY)
+            .let { if (it == 0 && start != end) MINUTES_PER_DAY else it }
+
+    /** Also runs per mark while a tape moves. Arguments hold what the finger has not saved yet. */
+    private fun showRange(start: Int = routine().startMin, end: Int = routine().endMin) {
+        val b = _binding ?: return
+        b.rangeClock.text = "${minuteLabel(start)}  ${minuteLabel(end)}"
+        (tabViews[open].getChildAt(1) as TextView).text = minuteLabel(start)
+        b.startValue.text = getString(R.string.routine_start_value, minuteLabel(start))
+        b.endValue.text = getString(R.string.routine_end_value, minuteLabel(end))
+        val state = getString(if (routine().enabled) R.string.routine_on else R.string.routine_off)
         b.lengthLabel.text = getString(
-            R.string.stats_caption_plain, state, requireContext().durationLabel(length)
+            R.string.stats_caption_plain, state, requireContext().durationLabel(length(start, end))
         )
     }
 

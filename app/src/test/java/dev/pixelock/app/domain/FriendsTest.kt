@@ -1,7 +1,9 @@
 package dev.pixelock.app.domain
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
 
@@ -16,6 +18,12 @@ class FriendsTest {
     @Test fun `anything that is not a code is refused`() {
         listOf("", "short", "23456789ABCDEFGH2", "O0OOOOOOOO", "23456789ABCDEFGH; drop", "evil.com/23456789ABCDEFGH/x")
             .forEach { assertNull(it, parseGroupCode(it)) }
+    }
+
+    @Test fun `setup script hash matches the app, so the admin passcode opens the hidden screen`() {
+        val fromPython = "LQx3A5lom6a6y+ehEBT1ovXVkl/KvukyTItJ5jnyxGw="
+        assertTrue(EndPassword.matches("correct horse", "AAECAwQFBgcICQoLDA0ODw==", fromPython))
+        assertFalse(EndPassword.matches("wrong horse", "AAECAwQFBgcICQoLDA0ODw==", fromPython))
     }
 
     @Test fun `invite link uses the server when there is one`() {

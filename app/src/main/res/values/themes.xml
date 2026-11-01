@@ -36,6 +36,17 @@
         <item name="android:textColor">@color/ink</item>
         <item name="android:textSize">15sp</item>
     </style>
+    <style name="Text.Title" parent="">
+        <item name="android:textColor">@color/ink</item>
+        <item name="android:textSize">17sp</item>
+    </style>
+    <style name="ValueSlot" parent="Slot">
+        <item name="android:drawableEnd">@drawable/ic_edit</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:paddingHorizontal">14dp</item>
+        <item name="android:textColor">@color/tile_text</item>
+        <item name="android:textSize">14sp</item>
+    </style>
     <style name="NavButton">
         <item name="android:layout_width">72dp</item>
         <item name="android:layout_height">48dp</item>

@@ -81,13 +81,15 @@ class SupabaseBackendTest {
 
     @Test fun `first call signs in anonymously and then reuses the token`() {
         replies["/rest/v1/rpc/create_group"] = 200 to "\"23456789ABCDEFGH\""
-        assertEquals("23456789ABCDEFGH", backend.createGroup("Sam"))
+        assertEquals("23456789ABCDEFGH", backend.createGroup("Sam", "Study gang"))
+        replies["/rest/v1/rpc/group_name"] = 200 to "\"Study gang\""
+        assertEquals("Study gang", backend.groupName("23456789ABCDEFGH"))
         backend.leaveGroup("23456789ABCDEFGH")
 
         assertEquals("/auth/v1/signup", seen[0].uri)
         assertEquals(null, seen[0].auth)
         assertEquals("anon", seen[0].apikey)
-        assertEquals("{\"p_alias\":\"Sam\"}", seen[1].body)
+        assertEquals("{\"p_alias\":\"Sam\",\"p_name\":\"Study gang\"}", seen[1].body)
         assertEquals("Bearer a1", seen[1].auth)
         assertEquals("anon", seen[1].apikey)
         assertEquals(1, seen.count { it.uri == "/auth/v1/signup" })
@@ -110,6 +112,19 @@ class SupabaseBackendTest {
         replies["/auth/v1/token"] = 200 to """{"access_token":"a2","refresh_token":"r2","expires_in":3600}"""
         assertFails("auth") { backend.deleteMyData() }
         assertEquals(listOf("Bearer bad", null, "Bearer a2"), seen.map { it.auth })
+    }
+
+    @Test fun `board reads the phone and laptop split`() {
+        tokens.session = AuthSession("t", "r", clock + 3_600_000)
+        replies["/rest/v1/rpc/board"] = 200 to
+            """[{"alias":"Sam","focused_min":90,"distracted_min":5,"is_me":true,"phone_min":60,"laptop_min":30,"laptop_distracted_min":2}]"""
+        assertEquals(listOf(BoardRow("Sam", 90, 5, true, 60, 30)), backend.board("23456789ABCDEFGH", "2026-10-01", "2026-10-30"))
+    }
+
+    @Test fun `pair code is read from the rpc`() {
+        tokens.session = AuthSession("t", "r", clock + 3_600_000)
+        replies["/rest/v1/rpc/create_pair_code"] = 200 to "\"ABCD2345EFGH\""
+        assertEquals("ABCD2345EFGH", backend.createPairCode())
     }
 
     @Test fun `board reads aliases and totals`() {

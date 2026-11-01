@@ -56,8 +56,12 @@ class SupabaseBackend(
 
     private class Reply(val status: Int, val body: String)
 
-    override fun createGroup(alias: String): String = shaped {
-        rpc("create_group", json("p_alias" to alias)).asString
+    override fun createGroup(alias: String, name: String): String = shaped {
+        rpc("create_group", json("p_alias" to alias, "p_name" to name)).asString
+    }
+
+    override fun groupName(code: String): String = shaped {
+        rpc("group_name", json("p_code" to code)).asString
     }
 
     override fun joinGroup(code: String, alias: String) {
@@ -75,7 +79,9 @@ class SupabaseBackend(
                 row["alias"].asString,
                 row["focused_min"].asLong,
                 row["distracted_min"].asLong,
-                row["is_me"].asBoolean
+                row["is_me"].asBoolean,
+                row["phone_min"]?.takeIf { !it.isJsonNull }?.asLong ?: 0L,
+                row["laptop_min"]?.takeIf { !it.isJsonNull }?.asLong ?: 0L
             )
         }
     }
@@ -95,6 +101,10 @@ class SupabaseBackend(
             body.toString(),
             mapOf("Prefer" to "resolution=merge-duplicates,return=minimal")
         )
+    }
+
+    override fun createPairCode(): String = shaped {
+        rpc("create_pair_code", JsonObject()).asString
     }
 
     override fun deleteMyData() {
