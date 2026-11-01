@@ -18,9 +18,12 @@ import dev.pixelock.app.data.models.Settings
 import dev.pixelock.app.databinding.FragmentBagsBinding
 import dev.pixelock.app.domain.Bag
 import dev.pixelock.app.domain.BagMode
+import dev.pixelock.app.domain.MAX_SESSION_MIN
 import dev.pixelock.app.domain.MINUTES_PER_DAY
 import dev.pixelock.app.domain.canEdit
 import dev.pixelock.app.ui.activity.AppPickerActivity
+import dev.pixelock.app.ui.askMinutes
+import dev.pixelock.app.ui.askTime
 import dev.pixelock.app.ui.minuteLabel
 import dev.pixelock.app.ui.onSettings
 import dev.pixelock.app.ui.updateSettings
@@ -54,13 +57,16 @@ class BagsFragment : Fragment() {
         buildColumns()
         binding.modeLimit.setOnClickListener { change { it.copy(mode = BagMode.DAILY_LIMIT) } }
         binding.modeWindow.setOnClickListener { change { it.copy(mode = BagMode.WINDOW) } }
-        binding.rulerA.onChange = { value ->
-            if (bag().mode == BagMode.DAILY_LIMIT) change { it.copy(dailyLimitMin = value) }
-            else change { it.copy(startMin = value) }
-        }
-        binding.rulerB.onChange = { value -> change { it.copy(endMin = value) } }
+        binding.rulerA.onChange = ::setFirst
+        binding.rulerB.onChange = ::setEnd
         binding.rulerA.commitOnRelease = true
         binding.rulerB.commitOnRelease = true
+        binding.rulerA.onScrub = { value ->
+            if (bag().mode == BagMode.DAILY_LIMIT) showValues(limit = value) else showValues(start = value)
+        }
+        binding.rulerB.onScrub = { value -> showValues(end = value) }
+        binding.valueA.setOnClickListener { typeFirst() }
+        binding.valueB.setOnClickListener { typeEnd() }
 
         val strict = StrictModeController(requireContext())
         onSettings { s ->
@@ -72,6 +78,27 @@ class BagsFragment : Fragment() {
     }
 
     private fun bag(): Bag = settings.bags[open]
+
+    private fun setFirst(value: Int) {
+        if (bag().mode == BagMode.DAILY_LIMIT) change { it.copy(dailyLimitMin = value) }
+        else change { it.copy(startMin = value) }
+    }
+
+    private fun setEnd(value: Int) = change { it.copy(endMin = value) }
+
+    private fun typeFirst() {
+        val bag = bag()
+        when {
+            !editable(bag) -> refuse()
+            bag.mode == BagMode.DAILY_LIMIT ->
+                askMinutes(R.string.bag_limit, bag.dailyLimitMin, 0..MAX_SESSION_MIN, ::setFirst)
+            else -> askTime(R.string.bag_open_from, bag.startMin, ::setFirst)
+        }
+    }
+
+    private fun typeEnd() {
+        if (editable(bag())) askTime(R.string.bag_open_to, bag().endMin, ::setEnd) else refuse()
+    }
 
     private fun buildColumns() {
         val context = requireContext()
@@ -173,9 +200,10 @@ class BagsFragment : Fragment() {
         b.modeLimit.isSelected = limit
         b.modeWindow.isSelected = !limit
         b.rulerB.visibility = if (limit) View.GONE else View.VISIBLE
+        b.valueB.visibility = b.rulerB.visibility
         b.rulerA.apply {
             if (limit) {
-                min = 0; max = 180; step = 5
+                min = 0; max = MAX_SESSION_MIN; step = 5
                 value = bag.dailyLimitMin
                 contentDescription = getString(R.string.bag_limit)
             } else {
@@ -189,11 +217,22 @@ class BagsFragment : Fragment() {
             value = bag.endMin
             contentDescription = getString(R.string.bag_open_to)
         }
-        b.valueLabel.text = if (limit) {
-            getString(R.string.bag_limit_value, bag.dailyLimitMin)
+        showValues()
+    }
+
+    /** Also runs per mark while a tape moves. Arguments hold what the finger has not saved yet. */
+    private fun showValues(
+        limit: Int = bag().dailyLimitMin,
+        start: Int = bag().startMin,
+        end: Int = bag().endMin
+    ) {
+        val b = _binding ?: return
+        b.valueA.text = if (bag().mode == BagMode.DAILY_LIMIT) {
+            getString(R.string.bag_limit_value, limit)
         } else {
-            getString(R.string.stats_range, minuteLabel(bag.startMin), minuteLabel(bag.endMin))
+            getString(R.string.bag_from_value, minuteLabel(start))
         }
+        b.valueB.text = getString(R.string.bag_to_value, minuteLabel(end))
     }
 
     override fun onDestroyView() {

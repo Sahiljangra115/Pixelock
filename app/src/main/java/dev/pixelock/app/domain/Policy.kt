@@ -62,6 +62,8 @@ data class PolicyState(
     val bags: List<Bag> = emptyList(),
     val focusBlockList: Set<String> = emptySet(),
     val shortVideoBlockingOn: Boolean = false,
+    /** Kept off this phone. Closed at open, even if installed. */
+    val bannedPackages: Set<String> = emptySet(),
     val unlocks: List<Unlock> = emptyList(),
     /** Checked before every rule. Static table plus the phone's own dialer, SMS, launcher, keyboard. */
     val alwaysAllow: Set<String> = emptySet(),

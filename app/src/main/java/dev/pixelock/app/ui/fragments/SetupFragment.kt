@@ -9,8 +9,8 @@ import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import dev.pixelock.app.R
@@ -19,6 +19,7 @@ import dev.pixelock.app.databinding.FragmentListBinding
 import dev.pixelock.app.databinding.RowItemBinding
 import dev.pixelock.app.hardcoded.OemAutostartIntents
 import dev.pixelock.app.ui.activity.MainActivity
+import dev.pixelock.app.ui.onSettings
 import dev.pixelock.app.ui.updateSettings
 
 class SetupFragment : Fragment() {
@@ -28,6 +29,7 @@ class SetupFragment : Fragment() {
 
     private val checks = ArrayList<Pair<RowItemBinding, () -> Boolean>>()
     private var greyHint: TextView? = null
+    private var lockWanted = false
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, state: Bundle?): View {
         _binding = FragmentListBinding.inflate(inflater, container, false)
@@ -41,35 +43,27 @@ class SetupFragment : Fragment() {
         val rows = binding.rows
         rows.addNote(getString(R.string.setup_intro))
 
-        rows.addHeading(getString(R.string.setup_needed))
-        permission(R.string.setup_a11y, R.string.setup_a11y_d, { ServiceHealth.isBlockerRunning(context) }) {
+        val needed = rows.addGroup(getString(R.string.setup_needed))
+        needed.permission(R.string.setup_a11y, R.string.setup_a11y_d, { ServiceHealth.isBlockerRunning(context) }) {
             openFirst(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
         greyHint = rows.addNote(getString(R.string.setup_a11y_grey)) {
             openFirst(ServiceHealth.appInfoIntent(context))
         }
 
-        rows.addHeading(getString(R.string.setup_helps))
-        permission(R.string.setup_notif, R.string.setup_notif_d, {
+        val helps = rows.addGroup(getString(R.string.setup_helps))
+        helps.permission(R.string.setup_notif, R.string.setup_notif_d, {
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
                 PackageManager.PERMISSION_GRANTED
         }) {
             // The system page, because the permission prompt goes silent after two refusals.
             openFirst(ServiceHealth.notificationIntent(context))
         }
-        permission(R.string.setup_battery, R.string.setup_battery_d, { ServiceHealth.isBatteryFree(context) }) {
+        helps.permission(R.string.setup_battery, R.string.setup_battery_d, { ServiceHealth.isBatteryFree(context) }) {
             openFirst(ServiceHealth.batteryIntent(context))
         }
-        permission(R.string.setup_admin, R.string.setup_admin_d, { ServiceHealth.isAdminActive(context) }) {
-            // Android has no page for one app's admin, and removing it lives on the hidden screen.
-            if (ServiceHealth.isAdminActive(context)) {
-                Toast.makeText(context, R.string.setup_admin_on, Toast.LENGTH_SHORT).show()
-            } else {
-                openFirst(ServiceHealth.adminIntent(context))
-            }
-        }
         ServiceHealth.autostartIntent(context)?.let { intent ->
-            rows.addRow(getString(R.string.setup_auto), getString(R.string.setup_auto_d)) {
+            helps.addRow(getString(R.string.setup_auto), getString(R.string.setup_auto_d)) {
                 openFirst(intent)
             }.also {
                 it.status.setText(R.string.setup_open)
@@ -78,14 +72,15 @@ class SetupFragment : Fragment() {
         }
         // No page exists for this one, and on these phones a swipe in recents can end the blocker.
         if (Build.MANUFACTURER.lowercase() in OemAutostartIntents.swipeKillers) {
-            rows.addRow(getString(R.string.setup_lock), getString(R.string.setup_lock_d))
+            helps.addRow(getString(R.string.setup_lock), getString(R.string.setup_lock_d))
         }
         rows.addButton(getString(R.string.setup_continue)) { finish() }
+        onSettings { lockWanted = it.uninstallLock }
     }
 
     /** The switch only shows what the phone says. Tapping always opens the real setting. */
-    private fun permission(title: Int, desc: Int, granted: () -> Boolean, open: () -> Unit) {
-        val row = binding.rows.addRow(getString(title), getString(desc), open)
+    private fun LinearLayout.permission(title: Int, desc: Int, granted: () -> Boolean, open: () -> Unit) {
+        val row = addRow(getString(title), getString(desc), open)
         row.toggle.visibility = View.VISIBLE
         checks += row to granted
     }
@@ -96,8 +91,13 @@ class SetupFragment : Fragment() {
             .firstOrNull { runCatching { startActivity(it) }.isSuccess }
     }
 
+    /** The lock has no switch here. The system asks once, and the hidden screen owns the rest. */
     private fun finish() {
+        val context = requireContext()
         updateSettings { it.copy(onboardingDone = true) }
+        if (lockWanted && !ServiceHealth.isAdminActive(context)) {
+            runCatching { startActivity(ServiceHealth.adminIntent(context)) }
+        }
         (activity as? MainActivity)?.closeOverlay()
     }
 

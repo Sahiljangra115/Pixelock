@@ -11,7 +11,10 @@ data class BoardRow(
     val alias: String,
     val focusedMin: Long,
     val distractedMin: Long,
-    val isMe: Boolean
+    val isMe: Boolean,
+    /** Focused minutes by device. focusedMin is the total of both. */
+    val phoneMin: Long = 0,
+    val laptopMin: Long = 0
 )
 
 enum class BoardPeriod { TODAY, WEEK, MONTH }

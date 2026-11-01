@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name_plain" translatable="false">Pixelock</string>
     <string name="a11y_desc">Lets Pixelock see which app is open, so it can close blocked apps and short video feeds. What you do in your apps stays on your phone.</string>
-    <string name="admin_desc">Stops Pixelock from being removed while a Strict Mode timer runs.</string>
+    <string name="admin_desc">Stops Pixelock from being removed.</string>
 
     <string name="down_channel">Blocking stopped</string>
     <string name="down_title">Blocking has stopped</string>
@@ -59,6 +59,9 @@
     <string name="bag_open_from">Open from</string>
     <string name="bag_open_to">Open until</string>
     <string name="bag_limit_value">%1$d min a day</string>
+    <string name="bag_from_value">From %1$s</string>
+    <string name="bag_to_value">Until %1$s</string>
+    <string name="minutes_range">Use a number from %1$d to %2$d.</string>
     <string name="edit_refused">This is locked while a timer runs.</string>
 
     <string name="routine_name">Routine %1$d</string>
@@ -68,6 +71,8 @@
     <string name="routine_on">On</string>
     <string name="start">Start</string>
     <string name="end">End</string>
+    <string name="routine_start_value">Start %1$s</string>
+    <string name="routine_end_value">End %1$s</string>
     <string name="day_letters" translatable="false">SMTWTFS</string>
 
     <string name="stats_day">Day</string>
@@ -101,6 +106,9 @@
     <string name="cancel">Cancel</string>
     <string name="s_apps">Apps blocked during a timer</string>
     <string name="s_theme">Look</string>
+    <string name="s_focus">Focus</string>
+    <string name="s_phone">Phone</string>
+    <string name="s_friends_d">Share daily totals, invite people, and add laptop time.</string>
     <string name="theme_system">Follow phone</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
@@ -124,9 +132,6 @@
     <string name="setup_a11y_grey">Phone refuses? Tap here, open the three dots menu, and pick Allow restricted settings. Shows on but off here? Turn it off and on.</string>
     <string name="setup_notif">Notifications</string>
     <string name="setup_notif_d">Tells you when a timer ends or blocking stops.</string>
-    <string name="setup_admin">Uninstall guard</string>
-    <string name="setup_admin_d">Stops Pixelock from being removed during a Strict Mode timer.</string>
-    <string name="setup_admin_on">The uninstall guard is on.</string>
     <string name="setup_battery">Battery freedom</string>
     <string name="setup_battery_d">Stops your phone from closing Pixelock to save power.</string>
     <string name="setup_auto">Autostart</string>
@@ -139,10 +144,12 @@
 
     <string name="blocked_title">%1$s is closed</string>
     <string name="blocked_short_title">Short videos are closed</string>
+    <string name="blocked_banned_title">This app stays off your phone</string>
     <string name="reason_session">Your timer is running.</string>
     <string name="reason_routine">Your routine is running.</string>
     <string name="reason_bag">This bag is closed for now.</string>
     <string name="reason_short">Reels and Shorts stay closed. The rest of the app still works.</string>
+    <string name="reason_banned">You chose to keep this app away.</string>
     <string name="go_home">Go home</string>
     <string name="go_back">Go back</string>
 
@@ -156,14 +163,18 @@
 
     <string name="dev_title">Developer</string>
     <string name="dev_switch">Kill switch</string>
-    <string name="dev_switch_d">For emergencies. Ends the timer, removes the uninstall guard, and stops all blocking until turned back off.</string>
+    <string name="dev_switch_d">For emergencies. Ends the timer, turns off the uninstall lock, and stops all blocking until turned back off.</string>
     <string name="dev_confirm_t">Stop everything?</string>
     <string name="dev_confirm">Type OFF to go on.</string>
     <string name="dev_wait_t">Last check</string>
     <string name="dev_wait">The timer ends and nothing is blocked after this.</string>
-    <string name="dev_remove">Allow uninstall</string>
-    <string name="dev_remove_d">Removes the uninstall guard. You can add it again in Phone setup.</string>
-    <string name="dev_remove_refused">Strict Mode is holding a timer. Use the kill switch.</string>
+    <string name="dev_lock">Uninstall lock</string>
+    <string name="dev_lock_d">Stops Pixelock from being removed or stopped. Turn this off before you uninstall.</string>
+    <string name="dev_lock_refused">Strict Mode is holding a timer. Use the kill switch.</string>
+    <string name="dev_banned">Apps you cannot install</string>
+    <string name="banned_note">Pixelock leaves the store page for these apps. If one gets on your phone anyway, it stays closed.</string>
+    <string name="banned_add">Add another app</string>
+    <string name="banned_add_hint">App name, as the store shows it</string>
     <string name="dev_log">Recent decisions</string>
     <string name="dev_log_empty">Nothing logged yet.</string>
     <string name="confirm">Confirm</string>
@@ -196,6 +207,7 @@
     <string name="board_rank">%1$d. %2$s</string>
     <string name="board_you">%1$s (you)</string>
     <string name="board_distracted">Distracted %1$s</string>
+    <string name="board_split">Phone %1$s, Laptop %2$s</string>
     <string name="board_loading">Loading</string>
     <string name="group_email">Invite by email</string>
     <string name="group_email_d">Your mail app opens with the invite ready to send.</string>
@@ -219,6 +231,8 @@
 
     <string name="laptop">Laptop time</string>
     <string name="laptop_d">Today: %1$s</string>
+    <string name="laptop_link_d">Link your laptop so it counts on its own.</string>
+    <string name="laptop_link_steps">On your laptop, run this once:\n\npython pixelock_laptop.py link %1$s\n\nThen run:\n\npython pixelock_laptop.py install\n\nThe code works once and ends in 10 minutes.</string>
     <string name="laptop_t">Laptop time</string>
     <string name="laptop_steps">Run this once on your laptop:\n\npython pixelock_laptop.py --pair %1$s\n\nThen run the script with no options each day and scan its code here.</string>
     <string name="laptop_type">Type code</string>

@@ -6,6 +6,7 @@ import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
 import dev.pixelock.app.CrashLogger
 import dev.pixelock.app.blockers.AppGate
+import dev.pixelock.app.blockers.InstallGuard
 import dev.pixelock.app.blockers.PolicyStore
 import dev.pixelock.app.blockers.ReelGate
 import dev.pixelock.app.blockers.ShadeLock
@@ -47,6 +48,7 @@ class AppBlockerService : BaseBlockingService() {
     private val appGate = AppGate(this, policy)
     private val reelGate = ReelGate(this, policy)
     private val strictGuard = StrictGuard(this, policy)
+    private val installGuard = InstallGuard(this, policy)
     private val shadeLock = ShadeLock(this, policy)
     private val usageTracker by lazy {
         AppUsageTracker(this, policy::isDistraction) { guarded("usage tick") { appGate.recheck() } }
@@ -72,6 +74,7 @@ class AppBlockerService : BaseBlockingService() {
                 try {
                     reelGate.check(pkg)
                     strictGuard.check(pkg)
+                    installGuard.check(pkg)
                 } catch (t: Throwable) {
                     if (t is CancellationException) throw t
                     crashLogger.logNonFatalError(Exception(t))
@@ -92,6 +95,9 @@ class AppBlockerService : BaseBlockingService() {
         val pkg = event.packageName?.toString() ?: return
 
         guarded("shade lock") { shadeLock.onEvent(event) }
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            guarded("window guard") { strictGuard.onWindow(pkg, event.className) }
+        }
 
         // Keyboards and SystemUI draw over the real app, so they never count as foreground.
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
@@ -101,12 +107,15 @@ class AppBlockerService : BaseBlockingService() {
             guarded("foreground") { onForegroundChanged(pkg) }
         }
 
-        if (reelGate.watches(pkg) || strictGuard.watches(pkg)) workChannel.trySend(pkg)
+        if (watched(pkg)) workChannel.trySend(pkg)
     }
+
+    private fun watched(pkg: String) =
+        reelGate.watches(pkg) || strictGuard.watches(pkg) || installGuard.watches(pkg)
 
     private fun onForegroundChanged(pkg: String) {
         windowRetries = 0
-        setWideEvents(reelGate.watches(pkg) || strictGuard.watches(pkg))
+        setWideEvents(watched(pkg))
         usageTracker.onForeground(pkg)
         appGate.onForeground(pkg)
     }
@@ -116,7 +125,7 @@ class AppBlockerService : BaseBlockingService() {
             setWideEvents(false)
             return
         }
-        setWideEvents(reelGate.watches(foreground) || strictGuard.watches(foreground))
+        setWideEvents(watched(foreground))
         appGate.recheck()
     }
 

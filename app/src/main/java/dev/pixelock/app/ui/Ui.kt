@@ -5,6 +5,7 @@ import android.os.CountDownTimer
 import android.text.InputFilter
 import android.text.InputType
 import android.view.View
+import android.view.WindowManager
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.Toast
@@ -14,6 +15,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.timepicker.MaterialTimePicker
+import com.google.android.material.timepicker.TimeFormat
 import dev.pixelock.app.R
 import dev.pixelock.app.core.SessionManager
 import dev.pixelock.app.data.DataStoreManager
@@ -21,7 +24,10 @@ import dev.pixelock.app.data.models.Settings
 import dev.pixelock.app.data.remote.BackendErrors
 import dev.pixelock.app.data.remote.BackendException
 import dev.pixelock.app.domain.EndPassword
+import dev.pixelock.app.domain.MINUTES_PER_DAY
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Runs [block] with fresh settings while the view is started. */
 fun Fragment.onSettings(block: (Settings) -> Unit) {
@@ -33,10 +39,12 @@ fun Fragment.onSettings(block: (Settings) -> Unit) {
     }
 }
 
-/** Writes a settings change without blocking the UI. */
+/** Writes a settings change without blocking the UI. Finishes even if the screen closes first. */
 fun Fragment.updateSettings(transform: (Settings) -> Settings) {
     val context = requireContext().applicationContext
-    viewLifecycleOwner.lifecycleScope.launch { DataStoreManager(context).update(transform) }
+    viewLifecycleOwner.lifecycleScope.launch {
+        withContext(NonCancellable) { DataStoreManager(context).update(transform) }
+    }
 }
 
 fun minuteLabel(minutes: Int): String = "%02d:%02d".format(minutes / 60, minutes % 60)
@@ -98,6 +106,49 @@ fun Fragment.askText(title: Int, hint: Int, initial: String, maxLength: Int, onD
         }
         .setNegativeButton(R.string.cancel, null)
         .show()
+}
+
+/** Whole minutes in [range]. A value outside it is refused, not clamped, so a typo saves nothing. */
+fun Fragment.askMinutes(title: Int, initial: Int, range: IntRange, onDone: (Int) -> Unit) {
+    val context = requireContext()
+    val input = EditText(context).apply {
+        setHint(R.string.minutes)
+        setText(initial.toString())
+        setSingleLine()
+        inputType = InputType.TYPE_CLASS_NUMBER
+        filters = arrayOf(InputFilter.LengthFilter(4))
+        selectAll()
+    }
+    val gap = (24 * resources.displayMetrics.density).toInt()
+    val frame = FrameLayout(context).apply { setPadding(gap, gap / 2, gap, 0); addView(input) }
+    val dialog = MaterialAlertDialogBuilder(context)
+        .setTitle(title)
+        .setMessage(getString(R.string.minutes_range, range.first, range.last))
+        .setView(frame)
+        .setPositiveButton(R.string.confirm) { _, _ ->
+            val minutes = input.text.toString().toIntOrNull()
+            if (minutes != null && minutes in range) onDone(minutes)
+            else Toast.makeText(context, getString(R.string.minutes_range, range.first, range.last), Toast.LENGTH_LONG).show()
+        }
+        .setNegativeButton(R.string.cancel, null)
+        .create()
+    dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+    dialog.show()
+    input.requestFocus()
+}
+
+/** A clock time, typed with the keyboard. [onDone] gets minutes since midnight. */
+fun Fragment.askTime(title: Int, minutes: Int, onDone: (Int) -> Unit) {
+    val time = minutes.coerceIn(0, MINUTES_PER_DAY - 1)
+    val picker = MaterialTimePicker.Builder()
+        .setTimeFormat(TimeFormat.CLOCK_24H)
+        .setInputMode(MaterialTimePicker.INPUT_MODE_KEYBOARD)
+        .setHour(time / 60)
+        .setMinute(time % 60)
+        .setTitleText(title)
+        .build()
+    picker.addOnPositiveButtonClickListener { onDone(picker.hour * 60 + picker.minute) }
+    picker.show(childFragmentManager, "time")
 }
 
 /** Like [askText], but hidden, and the text is kept exactly as typed. */

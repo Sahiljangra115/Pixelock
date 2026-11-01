@@ -98,10 +98,11 @@ class GroupFragment : Fragment() {
             it.month.setOnClickListener { setPeriod(BoardPeriod.MONTH) }
         }
         board = LinearLayout(requireContext()).apply { orientation = LinearLayout.VERTICAL }.also(rows::addView)
-        rows.addRow(getString(R.string.group_contacts), getString(R.string.group_contacts_d)) { pickContacts() }
-        rows.addRow(getString(R.string.group_email), getString(R.string.group_email_d)) { askEmails() }
-        rows.addRow(getString(R.string.group_invite), getString(R.string.group_invite_d)) { showInvite() }
-        rows.addRow(getString(R.string.group_leave), getString(R.string.group_leave_d)) { confirmLeave() }
+        val actions = rows.addGroup()
+        actions.addRow(getString(R.string.group_contacts), getString(R.string.group_contacts_d)) { pickContacts() }
+        actions.addRow(getString(R.string.group_email), getString(R.string.group_email_d)) { askEmails() }
+        actions.addRow(getString(R.string.group_invite), getString(R.string.group_invite_d)) { showInvite() }
+        actions.addRow(getString(R.string.group_leave), getString(R.string.group_leave_d)) { confirmLeave() }
         setPeriod(period)
     }
 
@@ -146,7 +147,12 @@ class GroupFragment : Fragment() {
             val name = if (row.isMe) getString(R.string.board_you, row.alias) else row.alias
             val item = list.addRow(
                 getString(R.string.board_rank, i + 1, name),
-                getString(R.string.board_distracted, requireContext().durationLabel(row.distractedMin.toInt()))
+                getString(R.string.board_distracted, requireContext().durationLabel(row.distractedMin.toInt())) + "\n" +
+                    getString(
+                        R.string.board_split,
+                        requireContext().durationLabel(row.phoneMin.toInt()),
+                        requireContext().durationLabel(row.laptopMin.toInt())
+                    )
             )
             item.status.text = requireContext().durationLabel(row.focusedMin.toInt())
             item.status.visibility = View.VISIBLE

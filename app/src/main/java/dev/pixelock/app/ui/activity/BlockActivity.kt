@@ -95,10 +95,11 @@ class BlockActivity : AppCompatActivity() {
         val label = runCatching {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
         }.getOrDefault(pkg)
-        binding.title.text = if (reason == BlockReason.SHORT_VIDEO) {
-            getString(R.string.blocked_short_title)
-        } else {
-            getString(R.string.blocked_title, label)
+        binding.title.text = when (reason) {
+            BlockReason.SHORT_VIDEO -> getString(R.string.blocked_short_title)
+            // Often the store's page, so the store's name would be the wrong one here.
+            BlockReason.BANNED -> getString(R.string.blocked_banned_title)
+            else -> getString(R.string.blocked_title, label)
         }
         binding.reason.setText(
             when (reason) {
@@ -106,11 +107,13 @@ class BlockActivity : AppCompatActivity() {
                 BlockReason.SESSION -> R.string.reason_session
                 BlockReason.ROUTINE -> R.string.reason_routine
                 BlockReason.BAG -> R.string.reason_bag
+                BlockReason.BANNED -> R.string.reason_banned
             }
         )
         binding.leave.setText(if (backOnly) R.string.go_back else R.string.go_home)
         // Short video stays closed for everyone: a pass opens an app, not a feed.
-        binding.pay.visibility = if (reason == BlockReason.SHORT_VIDEO) View.GONE else View.VISIBLE
+        val payable = reason != BlockReason.SHORT_VIDEO && reason != BlockReason.BANNED
+        binding.pay.visibility = if (payable) View.VISIBLE else View.GONE
         binding.pay.text = getString(R.string.pay_open, PaymentFlow.UNLOCK_MINUTES)
         binding.clock.visibility = if (untilMs > 0) View.VISIBLE else View.INVISIBLE
         binding.clock.setActive(true)

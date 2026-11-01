@@ -46,7 +46,6 @@ class StatsFragment : Fragment() {
         binding.modeDay.setOnClickListener { setPeriod(period.copy(mode = StatsMode.DAY)) }
         binding.modeMonth.setOnClickListener { setPeriod(period.copy(mode = StatsMode.MONTH)) }
         binding.modeYear.setOnClickListener { setPeriod(period.copy(mode = StatsMode.YEAR)) }
-        binding.friends.setOnClickListener { (activity as? MainActivity)?.openOverlay(FriendsFragment()) }
         binding.prev.setOnClickListener { setPeriod(period.shifted(-1)) }
         binding.next.setOnClickListener { setPeriod(period.shifted(1)) }
         binding.towers.onPick = { pick(it) }

@@ -38,6 +38,8 @@ object FakeBackend : Backend {
         rows.forEach { mine[it.date] = it }
     }
 
+    override fun createPairCode(): String = "ABCD2345EFGH"
+
     override fun deleteMyData() = mine.clear()
 
     override fun createOrder(purpose: String): Order {

@@ -2,11 +2,11 @@ package dev.pixelock.app.domain
 
 import java.time.ZonedDateTime
 
-enum class Surface { APP, SHORT_VIDEO }
+enum class Surface { APP, SHORT_VIDEO, INSTALL_PAGE }
 
 data class ForegroundState(val packageName: String, val surface: Surface = Surface.APP)
 
-enum class BlockReason { SHORT_VIDEO, SESSION, ROUTINE, BAG }
+enum class BlockReason { SHORT_VIDEO, SESSION, ROUTINE, BAG, BANNED }
 
 sealed interface Decision {
     data object Allow : Decision
@@ -23,6 +23,11 @@ fun decide(foreground: ForegroundState, policy: PolicyState, now: ZonedDateTime)
     // Before unlocks: a paid pass opens an app, never its short video feed.
     if (foreground.surface == Surface.SHORT_VIDEO && policy.shortVideoBlockingOn) {
         return Decision.Block(BlockReason.SHORT_VIDEO)
+    }
+
+    // Also before unlocks: an app kept off this phone stays off, even if it got installed.
+    if (foreground.surface == Surface.INSTALL_PAGE || pkg in policy.bannedPackages) {
+        return Decision.Block(BlockReason.BANNED)
     }
 
     val nowMs = now.toInstant().toEpochMilli()

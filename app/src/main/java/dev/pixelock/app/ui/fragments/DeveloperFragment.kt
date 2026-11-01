@@ -18,6 +18,7 @@ import dev.pixelock.app.core.StrictModeController
 import dev.pixelock.app.data.models.Settings
 import dev.pixelock.app.databinding.FragmentListBinding
 import dev.pixelock.app.databinding.RowItemBinding
+import dev.pixelock.app.ui.activity.MainActivity
 import dev.pixelock.app.ui.confirmAfterWait
 import dev.pixelock.app.ui.onSettings
 import dev.pixelock.app.ui.setUsable
@@ -38,7 +39,8 @@ class DeveloperFragment : Fragment() {
     private var settings = Settings()
     private var shortVideo: RowItemBinding? = null
     private var killSwitch: RowItemBinding? = null
-    private var remove: RowItemBinding? = null
+    private var lock: RowItemBinding? = null
+    private var banned: RowItemBinding? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, state: Bundle?): View {
         _binding = FragmentListBinding.inflate(inflater, container, false)
@@ -50,18 +52,22 @@ class DeveloperFragment : Fragment() {
         binding.title.setText(R.string.dev_title)
         binding.back.setOnClickListener { parentFragmentManager.popBackStack() }
 
-        shortVideo = binding.rows.addRow(getString(R.string.s_short_video), getString(R.string.s_short_video_d)) {
+        val always = binding.rows.addGroup()
+        shortVideo = always.addRow(getString(R.string.s_short_video), getString(R.string.s_short_video_d)) {
             toggleShortVideo()
         }.also { it.toggle.visibility = View.VISIBLE }
-        killSwitch = binding.rows.addRow(getString(R.string.dev_switch), getString(R.string.dev_switch_d)) {
+        lock = always.addRow(getString(R.string.dev_lock), getString(R.string.dev_lock_d)) {
+            toggleLock()
+        }.also { it.toggle.visibility = View.VISIBLE }
+        banned = always.addPageRow(getString(R.string.dev_banned), null) {
+            (activity as? MainActivity)?.openOverlay(InstallBlockFragment())
+        }
+        killSwitch = binding.rows.addGroup().addRow(getString(R.string.dev_switch), getString(R.string.dev_switch_d)) {
             toggle()
         }.also { it.toggle.visibility = View.VISIBLE }
-        remove = binding.rows.addRow(getString(R.string.dev_remove), getString(R.string.dev_remove_d)) {
-            removeGuard()
-        }
 
         val log = DecisionLog.read(requireContext())
-        binding.rows.addRow(
+        binding.rows.addGroup().addRow(
             getString(R.string.dev_log),
             log.ifBlank { getString(R.string.dev_log_empty) }
         )
@@ -71,7 +77,11 @@ class DeveloperFragment : Fragment() {
             shortVideo?.toggle?.isChecked = s.shortVideoBlockingOn
             shortVideo?.root?.setUsable(!strict.isTimerRunning(s))
             killSwitch?.toggle?.isChecked = strict.isEnforcementDisabled(s)
-            showRemove()
+            banned?.desc?.apply {
+                text = resources.getQuantityString(R.plurals.app_count, s.bannedApps.size, s.bannedApps.size)
+                visibility = View.VISIBLE
+            }
+            showLock()
         }
     }
 
@@ -84,17 +94,26 @@ class DeveloperFragment : Fragment() {
         updateSettings { s -> if (strict.isTimerRunning(s)) s else s.copy(shortVideoBlockingOn = !s.shortVideoBlockingOn) }
     }
 
-    private fun showRemove() {
-        remove?.root?.visibility = if (ServiceHealth.isAdminActive(requireContext())) View.VISIBLE else View.GONE
+    /** On means Android refuses the uninstall too, so the switch shows both halves. */
+    private fun isLocked() = settings.uninstallLock && ServiceHealth.isAdminActive(requireContext())
+
+    private fun showLock() {
+        lock?.toggle?.isChecked = isLocked()
     }
 
-    private fun removeGuard() {
-        if (strict.isEnforcing(settings)) {
-            Toast.makeText(requireContext(), R.string.dev_remove_refused, Toast.LENGTH_LONG).show()
+    private fun toggleLock() {
+        val context = requireContext()
+        if (!isLocked()) {
+            updateSettings { it.copy(uninstallLock = true) }
+            if (!ServiceHealth.isAdminActive(context)) startActivity(ServiceHealth.adminIntent(context))
             return
         }
-        ServiceHealth.removeAdmin(requireContext())
-        showRemove()
+        if (strict.isEnforcing(settings)) {
+            Toast.makeText(context, R.string.dev_lock_refused, Toast.LENGTH_LONG).show()
+            return
+        }
+        updateSettings { it.copy(uninstallLock = false) }
+        ServiceHealth.removeAdmin(context)
     }
 
     private fun toggle() {
@@ -121,21 +140,22 @@ class DeveloperFragment : Fragment() {
         confirmAfterWait(R.string.dev_wait_t, getString(R.string.dev_wait), KILL_WAIT_SECONDS) {
             viewLifecycleOwner.lifecycleScope.launch {
                 SessionManager.killEverything(context)
-                showRemove()
+                showLock()
             }
         }
     }
 
     override fun onResume() {
         super.onResume()
-        showRemove()
+        showLock()
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         shortVideo = null
         killSwitch = null
-        remove = null
+        lock = null
+        banned = null
         _binding = null
     }
 }

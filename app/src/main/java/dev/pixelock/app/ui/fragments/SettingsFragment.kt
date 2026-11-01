@@ -25,6 +25,7 @@ import dev.pixelock.app.data.models.THEME_LIGHT
 import dev.pixelock.app.data.models.THEME_SYSTEM
 import dev.pixelock.app.databinding.FragmentListBinding
 import dev.pixelock.app.databinding.RowItemBinding
+import dev.pixelock.app.databinding.ViewThemeBlocksBinding
 import dev.pixelock.app.ui.activity.AppPickerActivity
 import dev.pixelock.app.ui.activity.MainActivity
 import dev.pixelock.app.ui.askNewPassword
@@ -66,7 +67,7 @@ class SettingsFragment : Fragment() {
     private var shade: RowItemBinding? = null
     private var strictRow: RowItemBinding? = null
     private var apps: RowItemBinding? = null
-    private var theme: RowItemBinding? = null
+    private var themes: ViewThemeBlocksBinding? = null
     private var paused: RowItemBinding? = null
     private var password: RowItemBinding? = null
 
@@ -89,23 +90,35 @@ class SettingsFragment : Fragment() {
 
         val rows = binding.rows
         paused = rows.addRow(getString(R.string.s_paused_t), getString(R.string.s_paused_d)) { resume() }
-        shade = rows.addRow(getString(R.string.s_shade), getString(R.string.s_shade_d)) {
-            ifEditable { s -> s.copy(shadeLockOn = !s.shadeLockOn) }
+        rows.addGroup().addPageRow(getString(R.string.friends), getString(R.string.s_friends_d)) {
+            (activity as? MainActivity)?.openOverlay(FriendsFragment())
         }
-        strictRow = rows.addRow(getString(R.string.s_strict), getString(R.string.s_strict_d)) { toggleStrict() }
-        password = rows.addRow(getString(R.string.s_password), getString(R.string.s_password_d)) {
+
+        val focus = rows.addGroup(getString(R.string.s_focus))
+        strictRow = focus.addRow(getString(R.string.s_strict), getString(R.string.s_strict_d)) { toggleStrict() }
+        password = focus.addRow(getString(R.string.s_password), getString(R.string.s_password_d)) {
             if (timerRunning) refuse() else askNewPassword { render() }
         }
-        apps = rows.addRow(getString(R.string.s_apps), null) {
+        apps = focus.addPageRow(getString(R.string.s_apps), null) {
             if (timerRunning) refuse() else picker.launch(
                 AppPickerActivity.intent(requireContext(), settings.focusBlockList)
             )
         }
-        theme = rows.addRow(getString(R.string.s_theme), null) { cycleTheme() }
-        rows.addRow(getString(R.string.s_setup), getString(R.string.s_setup_d)) {
+        shade = focus.addRow(getString(R.string.s_shade), getString(R.string.s_shade_d)) {
+            ifEditable { s -> s.copy(shadeLockOn = !s.shadeLockOn) }
+        }
+
+        val blocks = ViewThemeBlocksBinding.inflate(layoutInflater, rows.addGroup(getString(R.string.s_theme)), true)
+        blocks.themeSystem.setOnClickListener { setTheme(THEME_SYSTEM) }
+        blocks.themeLight.setOnClickListener { setTheme(THEME_LIGHT) }
+        blocks.themeDark.setOnClickListener { setTheme(THEME_DARK) }
+        themes = blocks
+
+        val phone = rows.addGroup(getString(R.string.s_phone))
+        phone.addPageRow(getString(R.string.s_setup), getString(R.string.s_setup_d)) {
             (activity as? MainActivity)?.openOverlay(SetupFragment())
         }
-        rows.addRow(getString(R.string.s_version, BuildConfig.VERSION_NAME), null) { onVersionTap() }
+        phone.addRow(getString(R.string.s_version, BuildConfig.VERSION_NAME), null) { onVersionTap() }
 
         listOf(shade, strictRow).forEach { it?.toggle?.visibility = View.VISIBLE }
         onSettings { s ->
@@ -152,10 +165,9 @@ class SettingsFragment : Fragment() {
         }
     }
 
-    private fun cycleTheme() {
-        val prefs = requireContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val next = (prefs.getInt(KEY_THEME, THEME_SYSTEM) + 1) % 3
-        prefs.edit().putInt(KEY_THEME, next).apply()
+    private fun setTheme(mode: Int) {
+        requireContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putInt(KEY_THEME, mode).apply()
         applySavedTheme(requireContext())
         render()
     }
@@ -181,15 +193,10 @@ class SettingsFragment : Fragment() {
             visibility = View.VISIBLE
         }
         val themeMode = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_THEME, THEME_SYSTEM)
-        theme?.desc?.apply {
-            setText(
-                when (themeMode) {
-                    THEME_LIGHT -> R.string.theme_light
-                    THEME_DARK -> R.string.theme_dark
-                    else -> R.string.theme_system
-                }
-            )
-            visibility = View.VISIBLE
+        themes?.apply {
+            themeSystem.isSelected = themeMode == THEME_SYSTEM
+            themeLight.isSelected = themeMode == THEME_LIGHT
+            themeDark.isSelected = themeMode == THEME_DARK
         }
         password?.status?.apply {
             setText(if (settings.endPasswordHash.isEmpty()) R.string.s_password_unset else R.string.s_password_set)
@@ -212,7 +219,7 @@ class SettingsFragment : Fragment() {
         shade = null
         strictRow = null
         apps = null
-        theme = null
+        themes = null
         paused = null
         password = null
         _binding = null

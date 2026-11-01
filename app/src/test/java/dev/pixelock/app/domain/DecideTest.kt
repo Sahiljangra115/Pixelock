@@ -41,6 +41,27 @@ class DecideTest {
         assertEquals(Decision.Allow, decide(reel(), base.copy(shortVideoBlockingOn = false), friday3pm))
     }
 
+    @Test fun `a banned app stays closed with no timer and no pass opens it`() {
+        val policy = base.copy(
+            bannedPackages = setOf(insta),
+            unlocks = listOf(Unlock(insta, nowMs + 60_000))
+        )
+        assertEquals(Decision.Block(BlockReason.BANNED), decide(app(), policy, friday3pm))
+    }
+
+    @Test fun `an install page closes even for a name with no package`() {
+        val page = ForegroundState("Threads", Surface.INSTALL_PAGE)
+        assertEquals(Decision.Block(BlockReason.BANNED), decide(page, base, friday3pm))
+    }
+
+    @Test fun `always allowed beats a ban, and the kill switch ends bans`() {
+        val page = ForegroundState(dialer, Surface.INSTALL_PAGE)
+        assertEquals(Decision.Allow, decide(page, base, friday3pm))
+        val banned = base.copy(bannedPackages = setOf(dialer, insta))
+        assertEquals(Decision.Allow, decide(app(dialer), banned, friday3pm))
+        assertEquals(Decision.Allow, decide(app(), banned.copy(enforcementDisabled = true), friday3pm))
+    }
+
     @Test fun `listed apps are blocked during a session until it ends`() {
         val policy = base.copy(session = session)
         assertEquals(Decision.Block(BlockReason.SESSION, session.endsAtMs), decide(app(), policy, friday3pm))

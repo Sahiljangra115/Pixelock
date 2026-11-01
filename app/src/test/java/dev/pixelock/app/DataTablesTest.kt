@@ -2,6 +2,7 @@ package dev.pixelock.app
 
 import dev.pixelock.app.hardcoded.AlwaysAllow
 import dev.pixelock.app.hardcoded.DefaultBlockList
+import dev.pixelock.app.hardcoded.InstallBlockCatalog
 import dev.pixelock.app.data.models.Settings
 import dev.pixelock.app.hardcoded.OemAutostartIntents
 import dev.pixelock.app.hardcoded.ReelSelectors
@@ -34,6 +35,23 @@ class DataTablesTest {
 
     @Test fun `short videos block from the first run`() {
         assertTrue(Settings().shortVideoBlockingOn)
+    }
+
+    @Test fun `the uninstall lock and the install block start on`() {
+        assertTrue(Settings().uninstallLock)
+        assertEquals(
+            setOf("Instagram", "Instagram Lite", "TikTok", "TikTok Lite"),
+            Settings().bannedApps.map { it.name }.toSet()
+        )
+    }
+
+    @Test fun `install block tables are clean`() {
+        val packages = InstallBlockCatalog.apps.flatMap { it.packages }
+        assertEquals(packages.size, packages.toSet().size)
+        assertEquals(InstallBlockCatalog.apps.size, InstallBlockCatalog.apps.map { it.name }.toSet().size)
+        (packages + InstallBlockCatalog.installPages).forEach { assertTrue(it, pkg.matches(it)) }
+        InstallBlockCatalog.apps.forEach { assertTrue(it.name, it.packages.isNotEmpty()) }
+        assertTrue(packages.none { it in AlwaysAllow.packages })
     }
 
     @Test fun `reel selectors are well formed`() {

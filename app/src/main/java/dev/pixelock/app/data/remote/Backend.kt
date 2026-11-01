@@ -35,6 +35,8 @@ interface Backend {
     fun board(code: String, from: String, to: String): List<BoardRow>
     fun pushTotals(rows: List<DayUpload>)
     fun deleteMyData()
+    /** A one time code that links a laptop to this phone's id. */
+    fun createPairCode(): String
     fun createOrder(purpose: String): Order
     fun orderStatus(id: String): String
     fun consumeOrder(id: String): Boolean

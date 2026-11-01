@@ -112,6 +112,19 @@ class SupabaseBackendTest {
         assertEquals(listOf("Bearer bad", null, "Bearer a2"), seen.map { it.auth })
     }
 
+    @Test fun `board reads the phone and laptop split`() {
+        tokens.session = AuthSession("t", "r", clock + 3_600_000)
+        replies["/rest/v1/rpc/board"] = 200 to
+            """[{"alias":"Sam","focused_min":90,"distracted_min":5,"is_me":true,"phone_min":60,"laptop_min":30,"laptop_distracted_min":2}]"""
+        assertEquals(listOf(BoardRow("Sam", 90, 5, true, 60, 30)), backend.board("23456789ABCDEFGH", "2026-10-01", "2026-10-30"))
+    }
+
+    @Test fun `pair code is read from the rpc`() {
+        tokens.session = AuthSession("t", "r", clock + 3_600_000)
+        replies["/rest/v1/rpc/create_pair_code"] = 200 to "\"ABCD2345EFGH\""
+        assertEquals("ABCD2345EFGH", backend.createPairCode())
+    }
+
     @Test fun `board reads aliases and totals`() {
         tokens.session = AuthSession("t", "r", clock + 3_600_000)
         replies["/rest/v1/rpc/board"] = 200 to

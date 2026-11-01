@@ -1,12 +1,14 @@
 package dev.pixelock.app.data.models
 
 import dev.pixelock.app.domain.Bag
+import dev.pixelock.app.domain.BannedApp
 import dev.pixelock.app.domain.FocusSession
 import dev.pixelock.app.domain.PendingOrder
 import dev.pixelock.app.domain.Routine
 import dev.pixelock.app.domain.StrictState
 import dev.pixelock.app.domain.Unlock
 import dev.pixelock.app.hardcoded.DefaultBlockList
+import dev.pixelock.app.hardcoded.InstallBlockCatalog
 
 const val THEME_SYSTEM = 0
 const val THEME_LIGHT = 1
@@ -38,5 +40,9 @@ data class Settings(
     val pendingOrders: List<PendingOrder> = emptyList(),
     /** Empty until the first timer asks for a password. */
     val endPasswordSalt: String = "",
-    val endPasswordHash: String = ""
+    val endPasswordHash: String = "",
+    /** Always on like short video blocking. Only the hidden screen turns it off. */
+    val uninstallLock: Boolean = true,
+    /** Apps that may not be installed or opened. Only the hidden screen changes this. */
+    val bannedApps: List<BannedApp> = InstallBlockCatalog.defaults
 )

@@ -26,6 +26,7 @@ import dev.pixelock.app.domain.MAX_SESSION_MIN
 import dev.pixelock.app.domain.PAUSE_MIN
 import dev.pixelock.app.domain.isPaused
 import dev.pixelock.app.ui.activity.PaymentActivity
+import dev.pixelock.app.ui.askMinutes
 import dev.pixelock.app.ui.askNewPassword
 import dev.pixelock.app.ui.askSecret
 import dev.pixelock.app.ui.confirmAfterWait
@@ -72,7 +73,9 @@ class TimerFragment : Fragment() {
         binding.preset15.setOnClickListener { select(15) }
         binding.preset45.setOnClickListener { select(45) }
         binding.preset180.setOnClickListener { select(180) }
-        binding.presetCustom.setOnClickListener { select(binding.ruler.value) }
+        binding.presetCustom.setOnClickListener {
+            askMinutes(R.string.custom, selected, 1..MAX_SESSION_MIN, ::select)
+        }
 
         binding.ruler.apply {
             min = CUSTOM_STEP
@@ -178,7 +181,7 @@ class TimerFragment : Fragment() {
         b.preset45.isSelected = selected == 45
         b.preset180.isSelected = selected == 180
         b.presetCustom.isSelected = selected !in setOf(15, 45, 180)
-        b.customValue.text = minuteLabel(b.ruler.value)
+        b.customValue.text = minuteLabel(selected)
 
         b.slide.isEnabled = idle || !enforcing
         b.slide.text = getString(

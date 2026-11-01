@@ -81,6 +81,9 @@ class RulerView @JvmOverloads constructor(
     /** Calls [onChange] once the tape stops, for values that are saved to disk. */
     var commitOnRelease = false
 
+    /** Every mark the tape passes, for labels that must keep up with the finger. Nothing saves here. */
+    var onScrub: ((Int) -> Unit)? = null
+
     private var stop = 0
     private var reported = 0
     private var position = 0f
@@ -201,6 +204,7 @@ class RulerView @JvmOverloads constructor(
             stop = near
             stateDescription = near.toString()
             performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            onScrub?.invoke(near)
             if (!commitOnRelease) report()
         }
         invalidate()
