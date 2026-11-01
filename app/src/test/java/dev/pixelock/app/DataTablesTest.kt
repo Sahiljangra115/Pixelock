@@ -2,6 +2,7 @@ package dev.pixelock.app
 
 import dev.pixelock.app.hardcoded.AlwaysAllow
 import dev.pixelock.app.hardcoded.DefaultBlockList
+import dev.pixelock.app.data.models.Settings
 import dev.pixelock.app.hardcoded.OemAutostartIntents
 import dev.pixelock.app.hardcoded.ReelSelectors
 import org.junit.Assert.assertEquals
@@ -29,6 +30,10 @@ class DataTablesTest {
         DefaultBlockList.packages.forEach { assertTrue(it, pkg.matches(it)) }
         assertEquals(DefaultBlockList.packages.size, DefaultBlockList.packages.toSet().size)
         assertTrue(DefaultBlockList.packages.none { it in AlwaysAllow.packages })
+    }
+
+    @Test fun `short videos block from the first run`() {
+        assertTrue(Settings().shortVideoBlockingOn)
     }
 
     @Test fun `reel selectors are well formed`() {

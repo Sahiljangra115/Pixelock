@@ -63,7 +63,6 @@ class SettingsFragment : Fragment() {
     private var tapCount = 0
     private var lastTap = 0L
 
-    private var shortVideo: RowItemBinding? = null
     private var shade: RowItemBinding? = null
     private var strictRow: RowItemBinding? = null
     private var apps: RowItemBinding? = null
@@ -90,9 +89,6 @@ class SettingsFragment : Fragment() {
 
         val rows = binding.rows
         paused = rows.addRow(getString(R.string.s_paused_t), getString(R.string.s_paused_d)) { resume() }
-        shortVideo = rows.addRow(getString(R.string.s_short_video), getString(R.string.s_short_video_d)) {
-            ifEditable { s -> s.copy(shortVideoBlockingOn = !s.shortVideoBlockingOn) }
-        }
         shade = rows.addRow(getString(R.string.s_shade), getString(R.string.s_shade_d)) {
             ifEditable { s -> s.copy(shadeLockOn = !s.shadeLockOn) }
         }
@@ -111,7 +107,7 @@ class SettingsFragment : Fragment() {
         }
         rows.addRow(getString(R.string.s_version, BuildConfig.VERSION_NAME), null) { onVersionTap() }
 
-        listOf(shortVideo, shade, strictRow).forEach { it?.toggle?.visibility = View.VISIBLE }
+        listOf(shade, strictRow).forEach { it?.toggle?.visibility = View.VISIBLE }
         onSettings { s ->
             settings = s
             timerRunning = strict.isTimerRunning(s)
@@ -178,7 +174,6 @@ class SettingsFragment : Fragment() {
         if (_binding == null) return
         val context = requireContext()
         paused?.root?.visibility = if (CrashGuard.isFailSafe(context)) View.VISIBLE else View.GONE
-        shortVideo?.toggle?.isChecked = settings.shortVideoBlockingOn
         shade?.toggle?.isChecked = settings.shadeLockOn
         strictRow?.toggle?.isChecked = strict.isEnabled(settings)
         apps?.desc?.apply {
@@ -201,7 +196,7 @@ class SettingsFragment : Fragment() {
             visibility = View.VISIBLE
         }
         // Any of these could open a running timer's apps without its password.
-        listOf(shortVideo, shade, apps).forEach { it?.root?.setUsable(!timerRunning) }
+        listOf(shade, apps).forEach { it?.root?.setUsable(!timerRunning) }
         // Strict can always be turned on. Only turning it off waits for the timer.
         strictRow?.root?.setUsable(!timerRunning || !strict.isEnabled(settings))
         password?.root?.setUsable(!timerRunning)
@@ -214,7 +209,6 @@ class SettingsFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        shortVideo = null
         shade = null
         strictRow = null
         apps = null

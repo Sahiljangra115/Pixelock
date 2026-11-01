@@ -3,7 +3,7 @@
 # Needs the debug APK built and one emulator or test phone on adb.
 # Do not run it on a phone you care about: it changes settings, reboots and uninstalls.
 #
-#   tools/safety_check.sh [group ...]     groups: basic block pause strict shade expiry kill crash friends pay clock update monkey cleanup
+#   tools/safety_check.sh [group ...]     groups: basic block pause strict shade expiry kill crash friends pay clock update monkey background cleanup
 set -u
 
 # This script reboots, rewrites accessibility settings and uninstalls. Emulators only by default.
@@ -122,7 +122,6 @@ group_basic() {
   adb logcat -b crash -c
   adb install -r -t "$APK" >/dev/null
   adb shell pm grant $PKG android.permission.POST_NOTIFICATIONS
-  adb shell appops set $PKG SYSTEM_ALERT_WINDOW allow
   seed "{$(base)}"
   check "blocker service binds" service_bound
   open_app
@@ -570,6 +569,26 @@ group_monkey() {
   check "launcher usable after monkey" is_home
 }
 
+# Stop in Active apps kills the blocker for good, so the app must never get that row.
+group_background() {
+  echo "== nothing stays up after the app is closed"
+  seed "{$(base)}"
+  open_app
+  go_home
+  check "no foreground service with no timer" "! adb shell dumpsys activity services $PKG | grep -q 'isForeground=true'"
+  local now; now=$(now_ms)
+  seed "{$(base),$(session_json "$now" $((now + 600000)))}"
+  check "no foreground service during a timer" "! adb shell dumpsys activity services $PKG | grep -q 'isForeground=true'"
+  check "the blocker does not hold the main process" "! adb shell dumpsys activity services $PKG | grep -q MultiInstanceInvalidationService"
+  seed "{$(base)}"
+  open_settings_end
+  check "Settings does not offer the short video switch" "! on_screen 'Block short videos'"
+  go_home
+  open_developer
+  check "the hidden screen has the short video switch" "on_screen 'Block short videos'"
+  go_home
+}
+
 group_cleanup() {
   echo "== app leaves cleanly"
   adb shell dpm set-active-admin "$ADMIN" >/dev/null 2>&1
@@ -586,7 +605,7 @@ group_cleanup() {
   check "phone still fine after uninstall" "go_home; is_home"
 }
 
-GROUPS_TO_RUN=${*:-basic block pause strict shade expiry kill crash friends pay clock update monkey cleanup}
+GROUPS_TO_RUN=${*:-basic block pause strict shade expiry kill crash friends pay clock update monkey background cleanup}
 for g in $GROUPS_TO_RUN; do "group_$g"; done
 echo
 echo "passed $PASS, failed $FAIL. Screens in $SHOTS"

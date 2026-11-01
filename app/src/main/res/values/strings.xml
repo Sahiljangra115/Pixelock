@@ -4,9 +4,6 @@
     <string name="a11y_desc">Lets Pixelock see which app is open, so it can close blocked apps and short video feeds. What you do in your apps stays on your phone.</string>
     <string name="admin_desc">Stops Pixelock from being removed while a Strict Mode timer runs.</string>
 
-    <string name="service_channel">Blocking</string>
-    <string name="service_title">Pixelock is on</string>
-    <string name="service_text">Keeping your blocked apps closed.</string>
     <string name="down_channel">Blocking stopped</string>
     <string name="down_title">Blocking has stopped</string>
     <string name="down_text">Tap to turn Pixelock back on.</string>
@@ -118,20 +115,24 @@
     <string name="s_version">Version %1$s</string>
 
     <string name="setup_title">Set up your phone</string>
-    <string name="setup_intro">Pixelock needs a few permissions to close apps. Tap each row.</string>
+    <string name="setup_intro">Tap a row to open that setting on your phone. Each switch shows what is on right now.</string>
+    <string name="setup_needed">Needed</string>
+    <string name="setup_helps">Helps</string>
+    <string name="setup_open">Open</string>
     <string name="setup_a11y">Accessibility</string>
-    <string name="setup_a11y_d">Needed. This is how Pixelock sees which app is open.</string>
-    <string name="setup_a11y_grey">Is the switch grey? Tap here, open the three dots menu, and pick Allow restricted settings.</string>
-    <string name="setup_overlay">Show over other apps</string>
-    <string name="setup_overlay_d">Needed. This shows the block screen.</string>
+    <string name="setup_a11y_d">Shows Pixelock which app is open. Nothing blocks without it.</string>
+    <string name="setup_a11y_grey">Phone refuses? Tap here, open the three dots menu, and pick Allow restricted settings. Shows on but off here? Turn it off and on.</string>
     <string name="setup_notif">Notifications</string>
     <string name="setup_notif_d">Tells you when a timer ends or blocking stops.</string>
     <string name="setup_admin">Uninstall guard</string>
-    <string name="setup_admin_d">Needed for Strict Mode.</string>
+    <string name="setup_admin_d">Stops Pixelock from being removed during a Strict Mode timer.</string>
+    <string name="setup_admin_on">The uninstall guard is on.</string>
     <string name="setup_battery">Battery freedom</string>
     <string name="setup_battery_d">Stops your phone from closing Pixelock to save power.</string>
     <string name="setup_auto">Autostart</string>
-    <string name="setup_auto_d">Some phones need this so Pixelock runs after a restart.</string>
+    <string name="setup_auto_d">Your phone needs this so Pixelock runs after a restart.</string>
+    <string name="setup_lock">Lock Pixelock in recent apps</string>
+    <string name="setup_lock_d">Open recent apps, then lock Pixelock, from its icon or by pulling its card down. Otherwise clearing recent apps can stop blocking.</string>
     <string name="setup_done">Done</string>
     <string name="setup_todo">Not yet</string>
     <string name="setup_continue">Continue</string>

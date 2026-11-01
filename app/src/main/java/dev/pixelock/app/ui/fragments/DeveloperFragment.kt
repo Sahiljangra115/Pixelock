@@ -20,6 +20,8 @@ import dev.pixelock.app.databinding.FragmentListBinding
 import dev.pixelock.app.databinding.RowItemBinding
 import dev.pixelock.app.ui.confirmAfterWait
 import dev.pixelock.app.ui.onSettings
+import dev.pixelock.app.ui.setUsable
+import dev.pixelock.app.ui.updateSettings
 import kotlinx.coroutines.launch
 
 /** Reached only by tapping the version row. Nothing in the app points here. */
@@ -34,6 +36,7 @@ class DeveloperFragment : Fragment() {
 
     private lateinit var strict: StrictModeController
     private var settings = Settings()
+    private var shortVideo: RowItemBinding? = null
     private var killSwitch: RowItemBinding? = null
     private var remove: RowItemBinding? = null
 
@@ -47,6 +50,9 @@ class DeveloperFragment : Fragment() {
         binding.title.setText(R.string.dev_title)
         binding.back.setOnClickListener { parentFragmentManager.popBackStack() }
 
+        shortVideo = binding.rows.addRow(getString(R.string.s_short_video), getString(R.string.s_short_video_d)) {
+            toggleShortVideo()
+        }.also { it.toggle.visibility = View.VISIBLE }
         killSwitch = binding.rows.addRow(getString(R.string.dev_switch), getString(R.string.dev_switch_d)) {
             toggle()
         }.also { it.toggle.visibility = View.VISIBLE }
@@ -62,9 +68,20 @@ class DeveloperFragment : Fragment() {
 
         onSettings { s ->
             settings = s
+            shortVideo?.toggle?.isChecked = s.shortVideoBlockingOn
+            shortVideo?.root?.setUsable(!strict.isTimerRunning(s))
             killSwitch?.toggle?.isChecked = strict.isEnforcementDisabled(s)
             showRemove()
         }
+    }
+
+    /** Off could open a running timer's apps without its password, so a timer locks it. */
+    private fun toggleShortVideo() {
+        if (strict.isTimerRunning(settings)) {
+            Toast.makeText(requireContext(), R.string.edit_refused, Toast.LENGTH_SHORT).show()
+            return
+        }
+        updateSettings { s -> if (strict.isTimerRunning(s)) s else s.copy(shortVideoBlockingOn = !s.shortVideoBlockingOn) }
     }
 
     private fun showRemove() {
@@ -116,6 +133,7 @@ class DeveloperFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        shortVideo = null
         killSwitch = null
         remove = null
         _binding = null
