@@ -23,13 +23,15 @@ import androidx.recyclerview.widget.RecyclerView
 import dev.pixelock.app.R
 import dev.pixelock.app.databinding.ActivityPickerBinding
 import dev.pixelock.app.databinding.ItemAppBinding
+import dev.pixelock.app.domain.GROUP_MAX
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Picks phone numbers and emails to invite. Contacts stay in memory on this screen. They are
- * handed only to the phone's own message and mail apps, and never reach the backend.
+ * Picks phone numbers and emails to invite. Contacts stay in memory on this screen. Picked ones
+ * go only to [dev.pixelock.app.core.SmsInvite] and the phone's own message and mail apps, and
+ * never reach the backend.
  */
 class ContactPickerActivity : AppCompatActivity() {
 
@@ -63,7 +65,10 @@ class ContactPickerActivity : AppCompatActivity() {
             row.name.text = "${contact.name}\n${contact.address}"
             row.check.isChecked = contact.address in selected
             row.root.setOnClickListener {
-                if (!selected.remove(contact.address)) selected += contact.address
+                if (!selected.remove(contact.address)) {
+                    if (selected.size < GROUP_MAX) selected += contact.address
+                    else Toast.makeText(this@ContactPickerActivity, R.string.contacts_limit, Toast.LENGTH_LONG).show()
+                }
                 row.check.isChecked = contact.address in selected
             }
         }

@@ -32,6 +32,8 @@ data class Settings(
     /** Shown to friends instead of any real name. */
     val alias: String = "",
     val groups: List<String> = emptyList(),
+    /** Group code to the name its maker picked. A group with no entry shows its code. */
+    val groupNames: Map<String, String> = emptyMap(),
     /** First date that still has to go up. Empty means the first upload has not run yet. */
     val syncFrom: String = "",
     /** Shared with the laptop script so a scanned total can be trusted. */

@@ -17,6 +17,7 @@ import dev.pixelock.app.data.models.Settings
 import dev.pixelock.app.data.remote.Backends
 import dev.pixelock.app.databinding.FragmentListBinding
 import dev.pixelock.app.domain.ALIAS_MAX
+import dev.pixelock.app.domain.GROUP_NAME_MAX
 import dev.pixelock.app.domain.LaptopToken
 import dev.pixelock.app.domain.parseGroupCode
 import dev.pixelock.app.ui.activity.MainActivity
@@ -74,13 +75,11 @@ class FriendsFragment : Fragment() {
         ) { rename() }
         val groups = rows.addGroup()
         settings.groups.forEach { code ->
-            groups.addPageRow(getString(R.string.friends_group_row, code), null) {
+            groups.addPageRow(settings.groupNames[code] ?: getString(R.string.friends_group_row, code), null) {
                 (activity as? MainActivity)?.openOverlay(GroupFragment.create(code))
             }
         }
-        groups.addRow(getString(R.string.friends_create), null) {
-            withAlias { alias -> online { GroupSync.create(context.applicationContext, alias) } }
-        }
+        groups.addRow(getString(R.string.friends_create), null) { makeGroup() }
         groups.addRow(getString(R.string.friends_join), null) {
             askText(R.string.friends_join, R.string.friends_code_hint, "", CODE_MAX) { handleCode(it) }
         }
@@ -92,6 +91,19 @@ class FriendsFragment : Fragment() {
         ) { showLaptop() }
         if (settings.groups.isNotEmpty()) {
             more.addRow(getString(R.string.friends_delete), getString(R.string.friends_delete_d)) { confirmDelete() }
+        }
+    }
+
+    /** Goes straight on to inviting, since a group of one is no use. */
+    private fun makeGroup() {
+        val context = requireContext().applicationContext
+        withAlias { alias ->
+            askText(R.string.group_name, R.string.group_name_hint, "", GROUP_NAME_MAX) { name ->
+                online {
+                    val code = GroupSync.create(context, alias, name)
+                    (activity as? MainActivity)?.openOverlay(GroupFragment.create(code, invite = true))
+                }
+            }
         }
     }
 

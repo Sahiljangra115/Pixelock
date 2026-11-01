@@ -57,7 +57,8 @@ Room only through `AppDatabase.getInstance()`. Settings only through `DataStoreM
 - `SUPABASE_URL` and `SUPABASE_ANON_KEY` come from `local.properties` or env. Razorpay keys and the service key stay in Supabase secrets, never in the APK.
 - The contract for what leaves the phone is `DayUpload`: date and two numbers. Nothing goes up outside a group, and leaving the last group deletes it from the server.
 - Deep links only ask. Tapping a link never joins a group.
-- Invites go out through the phone's own mail and message apps. The server sends no mail. `ContactPickerActivity` is the only reader of contacts, they stay in memory there, and nothing from it reaches `Backend`.
+- `core/SmsInvite` texts invites from the user's SIM, and is the only code that may send SMS. Email goes through the mail app. If SMS fails or is refused, the message app opens with the invite. The server sends nothing. `ContactPickerActivity` is the only reader of contacts, they stay in memory there, and nothing from it reaches `Backend`.
+- Release builds ask for a passcode before the hidden screen. Friends run the same APK, so this is what keeps them off the kill switch. Only `ADMIN_PASSCODE_SALT` and `ADMIN_PASSCODE_HASH` exist, in `local.properties`. `assembleRelease` fails without them. Debug builds skip it, which `safety_check.sh` relies on.
 - Send `sb_` keys in the `apikey` header only, never as a bearer (`SupabaseBackend.send`, `_shared/keys.ts`).
 - `tools/setup_online.sh` walks through the whole server setup.
 - Laptop: `tools/pixelock_laptop.py` runs at login, counts per app minutes, and calls `push_laptop_day`. The phone links it with a one time code (`create_pair_code`, `redeem_pair_code`), so phone and laptop share one owner id. App names go to `laptop_days.apps`, readable only by the owner. `board()` returns phone, laptop and total, never app names. The old QR code path (`LaptopToken`) still works but is not the main route, and using both double counts.

@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.CountDownTimer
 import android.text.InputFilter
 import android.text.InputType
+import android.util.Log
 import android.view.View
 import android.view.WindowManager
 import android.widget.EditText
@@ -25,6 +26,7 @@ import dev.pixelock.app.data.remote.BackendErrors
 import dev.pixelock.app.data.remote.BackendException
 import dev.pixelock.app.domain.EndPassword
 import dev.pixelock.app.domain.MINUTES_PER_DAY
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -69,10 +71,19 @@ fun Fragment.online(action: suspend () -> Unit) {
     viewLifecycleOwner.lifecycleScope.launch {
         try {
             action()
-        } catch (e: BackendException) {
-            Toast.makeText(context, e.messageRes(), Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            val message = e.onlineMessageRes()
+            if (e !is BackendException) Log.w("Pixelock", "Server call failed", e)
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         }
     }
+}
+
+/** Leaving the screen is no failure, so it goes back up. Anything else, such as a full disk, is a plain error. */
+fun Exception.onlineMessageRes(): Int = when (this) {
+    is CancellationException -> throw this
+    is BackendException -> messageRes()
+    else -> R.string.err_server
 }
 
 fun BackendException.messageRes(): Int = when (code) {

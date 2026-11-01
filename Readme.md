@@ -14,7 +14,7 @@ Pixelock is a focus app for Android 13 and newer. It blocks short video feeds an
 - **Strict Mode.** A strict timer holds even when you know the password. A phone restart ends Strict Mode.
 - **Notification shade lock.** Locks the notification shade. Its switch is in Settings.
 - **Stats.** See Day, Month and Year views, drawn as towers of blocks.
-- **Friend groups.** Invite friends from your contacts, by email, QR code, code or link. Compare daily totals on a leaderboard. Only totals leave the phone. Contacts stay on the phone.
+- **Friend groups.** Name a group, then pick friends from your contacts and Pixelock texts them the invite from your SIM. Normal SMS rates apply. A random code, QR code and link work anywhere else. Compare daily totals on a leaderboard. Only totals leave the phone. Contacts stay on the phone.
 - **Paid unlocks.** Pay by UPI to open one app for 15 minutes, or to end a Strict Mode timer.
 - **Laptop time.** Add focus time from [ActivityWatch](https://activitywatch.net) to your group total.
 - **Always allowed.** Calls, SMS, email, maps, travel and emergency apps are never blocked.
@@ -38,7 +38,7 @@ Pixelock is a focus app for Android 13 and newer. It blocks short video feeds an
 ./gradlew testDebugUnitTest assembleRelease
 ```
 
-Add `sdk.dir` to `local.properties` first. The build writes the release APK to `app/build/outputs/apk/release/`.
+Add `sdk.dir` to `local.properties` first. The release build also needs an admin passcode, which `tools/setup_online.sh` sets. It stops with an error without one. The build writes the release APK to `app/build/outputs/apk/release/`.
 
 ## Online features
 
@@ -55,6 +55,7 @@ The script walks you through each step:
 - Create the Supabase project and database.
 - Deploy the functions.
 - Configure Razorpay (you can skip this).
+- Set the passcode for the hidden screen.
 - Build the release APK and upload it, so invite links can point to it.
 
 Run the script again at any time. It saves your answers in `.setup.env`.

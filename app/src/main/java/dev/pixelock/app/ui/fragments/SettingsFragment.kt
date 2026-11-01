@@ -26,13 +26,17 @@ import dev.pixelock.app.data.models.THEME_SYSTEM
 import dev.pixelock.app.databinding.FragmentListBinding
 import dev.pixelock.app.databinding.RowItemBinding
 import dev.pixelock.app.databinding.ViewThemeBlocksBinding
+import dev.pixelock.app.domain.EndPassword
 import dev.pixelock.app.ui.activity.AppPickerActivity
 import dev.pixelock.app.ui.activity.MainActivity
 import dev.pixelock.app.ui.askNewPassword
+import dev.pixelock.app.ui.askSecret
 import dev.pixelock.app.ui.onSettings
 import dev.pixelock.app.ui.setUsable
 import dev.pixelock.app.ui.updateSettings
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class SettingsFragment : Fragment() {
 
@@ -178,7 +182,28 @@ class SettingsFragment : Fragment() {
         lastTap = now
         if (tapCount >= VERSION_TAPS) {
             tapCount = 0
-            (activity as? MainActivity)?.openOverlay(DeveloperFragment())
+            openDeveloper()
+        }
+    }
+
+    /**
+     * Friends run this same APK, so the passcode is what keeps them off the kill switch.
+     * ponytail: the salted hash ships in the APK, so someone who decompiles it can guess offline.
+     * Fine against friends with a long passcode. A server check is the upgrade if that changes.
+     */
+    private fun openDeveloper() {
+        val open = { (activity as? MainActivity)?.openOverlay(DeveloperFragment()) }
+        if (BuildConfig.DEBUG) {
+            open()
+            return
+        }
+        askSecret(R.string.dev_passcode_t, null) { typed ->
+            viewLifecycleOwner.lifecycleScope.launch {
+                val right = withContext(Dispatchers.Default) {
+                    EndPassword.matches(typed, BuildConfig.ADMIN_PASSCODE_SALT, BuildConfig.ADMIN_PASSCODE_HASH)
+                }
+                if (right) open() else Toast.makeText(requireContext(), R.string.dev_passcode_wrong, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

@@ -81,13 +81,15 @@ class SupabaseBackendTest {
 
     @Test fun `first call signs in anonymously and then reuses the token`() {
         replies["/rest/v1/rpc/create_group"] = 200 to "\"23456789ABCDEFGH\""
-        assertEquals("23456789ABCDEFGH", backend.createGroup("Sam"))
+        assertEquals("23456789ABCDEFGH", backend.createGroup("Sam", "Study gang"))
+        replies["/rest/v1/rpc/group_name"] = 200 to "\"Study gang\""
+        assertEquals("Study gang", backend.groupName("23456789ABCDEFGH"))
         backend.leaveGroup("23456789ABCDEFGH")
 
         assertEquals("/auth/v1/signup", seen[0].uri)
         assertEquals(null, seen[0].auth)
         assertEquals("anon", seen[0].apikey)
-        assertEquals("{\"p_alias\":\"Sam\"}", seen[1].body)
+        assertEquals("{\"p_alias\":\"Sam\",\"p_name\":\"Study gang\"}", seen[1].body)
         assertEquals("Bearer a1", seen[1].auth)
         assertEquals("anon", seen[1].apikey)
         assertEquals(1, seen.count { it.uri == "/auth/v1/signup" })

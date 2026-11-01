@@ -13,12 +13,17 @@ object FakeBackend : Backend {
     private val orders = HashMap<String, Long>()
     private val consumed = HashSet<String>()
     private val mine = HashMap<String, DayUpload>()
+    private val names = HashMap<String, String>()
     private var alias = "Me"
 
-    override fun createGroup(alias: String): String {
+    override fun createGroup(alias: String, name: String): String {
         this.alias = alias
-        return UUID.randomUUID().toString().filter { it in "23456789abcdef" }.take(16).padEnd(16, 'A').uppercase()
+        val code = UUID.randomUUID().toString().filter { it in "23456789abcdef" }.take(16).padEnd(16, 'A').uppercase()
+        names[code] = name
+        return code
     }
+
+    override fun groupName(code: String): String = names[code].orEmpty()
 
     override fun joinGroup(code: String, alias: String) {
         if (code.startsWith("22")) throw BackendException("group_not_found")

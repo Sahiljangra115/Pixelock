@@ -27,6 +27,7 @@ import com.google.zxing.qrcode.QRCodeWriter
 import dev.pixelock.app.BuildConfig
 import dev.pixelock.app.R
 import dev.pixelock.app.core.GroupSync
+import dev.pixelock.app.core.SmsInvite
 import dev.pixelock.app.data.remote.BackendException
 import dev.pixelock.app.data.remote.Backends
 import dev.pixelock.app.databinding.DialogInviteBinding
@@ -42,6 +43,7 @@ import dev.pixelock.app.ui.activity.ContactPickerActivity
 import dev.pixelock.app.ui.askText
 import dev.pixelock.app.ui.durationLabel
 import dev.pixelock.app.ui.messageRes
+import dev.pixelock.app.ui.onSettings
 import dev.pixelock.app.ui.online
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -56,10 +58,13 @@ class GroupFragment : Fragment() {
 
     companion object {
         private const val ARG_CODE = "code"
+        private const val ARG_INVITE = "invite"
         private const val QR_PX = 720
         private const val EMAILS_MAX = 1000
 
-        fun create(code: String) = GroupFragment().apply { arguments = bundleOf(ARG_CODE to code) }
+        /** [invite] walks a new group's maker through contacts, then the code and QR. */
+        fun create(code: String, invite: Boolean = false) =
+            GroupFragment().apply { arguments = bundleOf(ARG_CODE to code, ARG_INVITE to invite) }
     }
 
     private var _binding: FragmentListBinding? = null
@@ -69,17 +74,24 @@ class GroupFragment : Fragment() {
     private var board: LinearLayout? = null
     private var period = BoardPeriod.TODAY
     private var loadJob: Job? = null
+    private var groupLabel = ""
     private val code get() = requireArguments().getString(ARG_CODE).orEmpty()
 
     private val contactPicker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode != Activity.RESULT_OK) return@registerForActivityResult
-        val picked = result.data?.getStringArrayListExtra(ContactPickerActivity.EXTRA_SELECTED).orEmpty()
-        if (picked.isNotEmpty()) sendInvites(picked)
+        if (result.resultCode == Activity.RESULT_OK) {
+            val picked = result.data?.getStringArrayListExtra(ContactPickerActivity.EXTRA_SELECTED).orEmpty()
+            if (picked.isNotEmpty()) sendInvites(picked)
+        }
+        showFirstInvite()
     }
 
-    private val contactsPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) contactPicker.launch(ContactPickerActivity.intent(requireContext()))
-        else Toast.makeText(requireContext(), R.string.contacts_denied, Toast.LENGTH_LONG).show()
+    private val contactsPermission = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        if (has(Manifest.permission.READ_CONTACTS)) {
+            contactPicker.launch(ContactPickerActivity.intent(requireContext()))
+        } else {
+            Toast.makeText(requireContext(), R.string.contacts_denied, Toast.LENGTH_LONG).show()
+            showFirstInvite()
+        }
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, state: Bundle?): View {
@@ -88,8 +100,13 @@ class GroupFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        binding.title.text = getString(R.string.friends_group_row, code)
+        groupLabel = getString(R.string.friends_group_row, code)
+        binding.title.text = groupLabel
         binding.back.setOnClickListener { parentFragmentManager.popBackStack() }
+        onSettings { s ->
+            groupLabel = s.groupNames[code] ?: getString(R.string.friends_group_row, code)
+            _binding?.title?.text = groupLabel
+        }
 
         val rows = binding.rows
         tabs = ViewBoardTabsBinding.inflate(layoutInflater, rows, true).also {
@@ -104,6 +121,14 @@ class GroupFragment : Fragment() {
         actions.addRow(getString(R.string.group_invite), getString(R.string.group_invite_d)) { showInvite() }
         actions.addRow(getString(R.string.group_leave), getString(R.string.group_leave_d)) { confirmLeave() }
         setPeriod(period)
+        if (savedInstanceState == null && requireArguments().getBoolean(ARG_INVITE)) pickContacts()
+    }
+
+    /** Kept in the arguments, so turning the phone in the contact list cannot lose or repeat it. */
+    private fun showFirstInvite() {
+        if (!requireArguments().getBoolean(ARG_INVITE)) return
+        requireArguments().putBoolean(ARG_INVITE, false)
+        showInvite()
     }
 
     private fun setPeriod(next: BoardPeriod) {
@@ -190,13 +215,13 @@ class GroupFragment : Fragment() {
 
     /** Asked for only here, so nobody who skips this feature ever sees the prompt. */
     private fun pickContacts() {
-        val context = requireContext()
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
-            contactPicker.launch(ContactPickerActivity.intent(context))
-        } else {
-            contactsPermission.launch(Manifest.permission.READ_CONTACTS)
-        }
+        val missing = listOf(Manifest.permission.READ_CONTACTS, Manifest.permission.SEND_SMS).filterNot(::has)
+        if (missing.isEmpty()) contactPicker.launch(ContactPickerActivity.intent(requireContext()))
+        else contactsPermission.launch(missing.toTypedArray())
     }
+
+    private fun has(permission: String) =
+        ContextCompat.checkSelfPermission(requireContext(), permission) == PackageManager.PERMISSION_GRANTED
 
     private fun askEmails() {
         askText(R.string.group_email, R.string.group_email_hint, "", EMAILS_MAX) { text ->
@@ -207,20 +232,18 @@ class GroupFragment : Fragment() {
     }
 
     /**
-     * Hands the invite to the phone's own mail and message apps, so it comes from the user and
-     * the server sends nothing. Friends are blind copied, so they do not see each other's emails.
+     * Numbers get a text from this phone's SIM with no more taps. Without the SMS permission, or
+     * if a text fails, the message app opens with the invite ready. Email has no way to send
+     * itself, so the mail app opens. Friends are blind copied, so they do not see each other's
+     * emails. The server sends nothing.
      */
     private fun sendInvites(addresses: List<String>) {
         val link = inviteLink(BuildConfig.SUPABASE_URL, code)
         val text = getString(R.string.invite_text, link, code)
         val (emails, phones) = addresses.partition(::isEmail)
+        val canText = has(Manifest.permission.SEND_SMS)
         val intents = buildList {
-            if (phones.isNotEmpty()) {
-                add(
-                    Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", phones.joinToString(";"), null))
-                        .putExtra("sms_body", text)
-                )
-            }
+            if (phones.isNotEmpty() && !canText) add(smsAppIntent(phones, text))
             if (emails.isNotEmpty()) {
                 add(
                     Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:"))
@@ -230,12 +253,36 @@ class GroupFragment : Fragment() {
                 )
             }
         }
+        val activity = requireActivity()
         try {
-            requireContext().startActivities(intents.toTypedArray())
+            if (intents.isNotEmpty()) activity.startActivities(intents.toTypedArray())
         } catch (_: ActivityNotFoundException) {
             share(link)
         }
+        if (phones.isEmpty() || !canText) return
+        val sms = getString(R.string.invite_sms, groupLabel, link, code)
+        val app = activity.applicationContext
+        SmsInvite.scope.launch {
+            val failed = SmsInvite.send(app, phones, sms)
+            val sent = phones.size - failed.size
+            if (sent > 0) {
+                val message = app.resources.getQuantityString(R.plurals.invites_sent, sent, sent)
+                Toast.makeText(app, message, Toast.LENGTH_LONG).show()
+            }
+            if (failed.isNotEmpty()) {
+                Toast.makeText(app, R.string.invites_failed, Toast.LENGTH_LONG).show()
+                try {
+                    app.startActivity(smsAppIntent(failed, text).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                } catch (_: ActivityNotFoundException) {
+                    Unit // The toast already said so. The code and link are still on screen.
+                }
+            }
+        }
     }
+
+    private fun smsAppIntent(numbers: List<String>, text: String) =
+        Intent(Intent.ACTION_SENDTO, Uri.fromParts("smsto", numbers.joinToString(";"), null))
+            .putExtra("sms_body", text)
 
     private fun qrBitmap(text: String): Bitmap {
         val matrix = QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, QR_PX, QR_PX)

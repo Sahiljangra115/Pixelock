@@ -46,6 +46,7 @@ const pushTotal = `insert into public.day_totals (date, focused_min, distracted_
 
 const [{ create_group: code }] = await as(A, `select public.create_group('Asha')`)
 assert.match(code, /^[2-9A-H]{16}$/)
+await fails(B, `select public.group_name($1)`, [code], /not_a_member/)
 await as(B, `select public.join_group($1, 'Ben')`, [code.toLowerCase() + '  '])
 
 await as(A, pushTotal, ['2026-10-29', 100, 10])
@@ -78,6 +79,13 @@ await fails(A, pushTotal, ['2026-10-28', 0, 5000], /check constraint/)
 await fails(B, `select public.join_group('NOPE', 'x')`, [], /group_not_found/)
 await fails(B, `select public.join_group($1, '   ')`, [code], /check constraint/)
 await fails(null, `select public.create_group('x')`, [], /permission denied/)
+await fails(null, `select public.group_name($1)`, [code], /permission denied/)
+await fails(C, `select public.group_name($1)`, [code], /not_a_member/)
+await fails(C, `select public.create_group('Cy', $1)`, ['x'.repeat(31)], /check constraint/)
+const [{ create_group: named }] = await as(C, `select public.create_group('Cy', '  Study gang ')`)
+assert.equal((await as(C, `select public.group_name($1)`, [named]))[0].group_name, 'Study gang')
+await as(C, `select public.leave_group($1)`, [named])
+assert.equal((await as(A, `select public.group_name($1)`, [code]))[0].group_name, '')
 
 // Laptop link: A is the phone, C is the laptop.
 const [{ create_pair_code: pair }] = await as(A, `select public.create_pair_code()`)

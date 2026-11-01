@@ -56,8 +56,12 @@ class SupabaseBackend(
 
     private class Reply(val status: Int, val body: String)
 
-    override fun createGroup(alias: String): String = shaped {
-        rpc("create_group", json("p_alias" to alias)).asString
+    override fun createGroup(alias: String, name: String): String = shaped {
+        rpc("create_group", json("p_alias" to alias, "p_name" to name)).asString
+    }
+
+    override fun groupName(code: String): String = shaped {
+        rpc("group_name", json("p_code" to code)).asString
     }
 
     override fun joinGroup(code: String, alias: String) {

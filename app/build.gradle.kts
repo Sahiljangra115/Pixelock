@@ -36,6 +36,8 @@ android {
         resValue("string", "app_name", "Pixelock")
         buildConfigField("String", "SUPABASE_URL", clientConfig("SUPABASE_URL"))
         buildConfigField("String", "SUPABASE_ANON_KEY", clientConfig("SUPABASE_ANON_KEY"))
+        buildConfigField("String", "ADMIN_PASSCODE_SALT", clientConfig("ADMIN_PASSCODE_SALT"))
+        buildConfigField("String", "ADMIN_PASSCODE_HASH", clientConfig("ADMIN_PASSCODE_HASH"))
     }
 
     sourceSets {
@@ -69,6 +71,15 @@ android {
     buildFeatures {
         viewBinding = true
         buildConfig = true
+    }
+}
+
+// Without this the hidden screen could never open, and friends could never be rescued.
+tasks.matching { it.name == "assembleRelease" }.configureEach {
+    doFirst {
+        check(clientConfig("ADMIN_PASSCODE_HASH") != "\"\"") {
+            "No admin passcode. Run tools/setup_online.sh to set one."
+        }
     }
 }
 
